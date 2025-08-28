@@ -2,96 +2,151 @@ package asky
 
 import (
 	"bufio"
+	"errors"
 	"fmt"
 	"os"
 	"strings"
+	"time"
 
 	"github.com/fatih/color"
 )
 
-// -----------------------------------------------------------------------------
-// Theme
-// -----------------------------------------------------------------------------
-
 type Theme struct {
-	Prompt func(string, ...any) string
-	Helper func(string, ...any) string
-	Error  func(string, ...any) string
+	PromptSymbolStyle func(string, ...any) string
+	PromptTextStyle   func(string, ...any) string
+	HelperTextStyle   func(string, ...any) string
+	ErrorTextStyle    func(string, ...any) string
 }
 
 var DefaultTheme = Theme{
-	Prompt: color.CyanString,
-	Helper: color.HiBlackString,
-	Error:  color.RedString,
+	PromptSymbolStyle: color.YellowString,
+	PromptTextStyle:   color.WhiteString,
+	HelperTextStyle:   color.HiBlackString,
+	ErrorTextStyle:    color.RedString,
 }
 
-// -----------------------------------------------------------------------------
-// TextInput
-// -----------------------------------------------------------------------------
-
-type TextInputProps struct {
-	Prompt       string
+type TextInput struct {
+	PromptSymbol string
+	PromptText   string
 	DefaultValue string
 	HelperText   string
 	Separator    string
 	Theme        Theme
 }
 
-type TextInput struct {
-	props TextInputProps
-}
-
-func TextInputPrompt() *TextInput {
+func NewTextInput() *TextInput {
 	return &TextInput{
-		props: TextInputProps{
-			Separator: ": ",
-			Theme:     DefaultTheme,
-		},
+		PromptSymbol: "[?] ",
+		Separator:    ": ",
+		Theme:        DefaultTheme,
 	}
 }
 
-func (ti *TextInput) Prompt(p string) *TextInput {
-	ti.props.Prompt = p
+func (ti *TextInput) WithPromptSymbol(p string) *TextInput {
+	ti.PromptSymbol = p
 	return ti
 }
 
-func (ti *TextInput) DefaultResponse(val string) *TextInput {
-	ti.props.DefaultValue = val
+func (ti *TextInput) WithPromptText(p string) *TextInput {
+	ti.PromptText = p
 	return ti
 }
 
-func (ti *TextInput) HelperText(txt string) *TextInput {
-	ti.props.HelperText = txt
+func (ti *TextInput) WithDefault(val string) *TextInput {
+	ti.DefaultValue = val
+	return ti
+}
+
+func (ti *TextInput) WithHelper(txt string) *TextInput {
+	ti.HelperText = txt
 	return ti
 }
 
 func (ti *TextInput) WithSeparator(sep string) *TextInput {
-	ti.props.Separator = sep
+	ti.Separator = sep
 	return ti
 }
 
 func (ti *TextInput) WithTheme(th Theme) *TextInput {
-	ti.props.Theme = th
+	ti.Theme = th
 	return ti
 }
 
+var ErrInterrupted = errors.New("prompt interrupted")
+
 func (ti *TextInput) Render() (string, error) {
-	if ti.props.HelperText != "" {
-		fmt.Println(ti.props.Theme.Helper(ti.props.HelperText))
+	// Save cursor before printing the prompt
+	fmt.Print("\033[s")
+
+	// Print the helper + prompt
+	fmt.Println()
+	if ti.HelperText != "" || ti.DefaultValue != "" {
+		helper := ti.HelperText
+		if ti.DefaultValue != "" {
+			if helper != "" {
+				helper += " "
+			}
+			helper += "(Default: " + ti.DefaultValue + ")"
+		}
+		fmt.Println(ti.Theme.HelperTextStyle(helper))
 	}
 
-	fmt.Print(ti.props.Theme.Prompt(ti.props.Prompt) + ti.props.Separator)
+	fmt.Print(ti.Theme.PromptSymbolStyle(ti.PromptSymbol) + ti.Theme.PromptTextStyle(ti.PromptText+ti.Separator))
 
 	reader := bufio.NewReader(os.Stdin)
 	input, err := reader.ReadString('\n')
 	if err != nil {
-		return "", err
+		// restore and clear everything from saved position downwards
+		fmt.Print("\033[u\033[J")
+		return "", ErrInterrupted
 	}
-	input = strings.TrimSpace(input)
 
-	if input == "" && ti.props.DefaultValue != "" {
-		return ti.props.DefaultValue, nil
+	// Trim newline(s)
+	input = strings.TrimRight(input, "\r\n")
+
+	// Apply default if empty
+	if input == "" && ti.DefaultValue != "" {
+		input = ti.DefaultValue
 	}
+
+	// restore and clear everything from saved position downwards
+	fmt.Print("\033[u\033[J")
 
 	return input, nil
+}
+
+type Spinner struct {
+	frames []string
+	theme  Theme
+	stop   bool
+}
+
+func NewSpinner() *Spinner {
+	return &Spinner{
+		frames: []string{"[⠋] ", "[⠙] ", "[⠹] ", "[⠸] ", "[⠼] ", "[⠴] ", "[⠦] ", "[⠧] ", "[⠇] ", "[⠏] "},
+		theme:  DefaultTheme,
+	}
+}
+
+func (s *Spinner) Start(text string) {
+	// hide cursor
+	fmt.Print("\033[?25l")
+
+	go func() {
+		i := 0
+		for !s.stop {
+			thisFrame := s.frames[i%len(s.frames)]
+			fmt.Printf("%s%s\r", s.theme.PromptSymbolStyle(thisFrame), s.theme.PromptTextStyle(text))
+			time.Sleep(80 * time.Millisecond)
+			i++
+		}
+		// clear line on stop
+		fmt.Print("\r\033[K")
+	}()
+}
+
+func (s *Spinner) Stop() {
+	s.stop = true
+	// clear line + show cursor again
+	fmt.Print("\r\033[K\033[?25h")
 }
