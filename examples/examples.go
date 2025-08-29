@@ -43,8 +43,8 @@ func main() {
 
 	ok, _ := asky.NewConfirm().
 		WithPromptText("Proceed with deployment?").
-		WithHelper("This action is irreversible").
-		WithDefault(true).
+		WithHelperText("This action is irreversible").
+		WithDefaultOption(false).
 		Render()
 
 	if ok {

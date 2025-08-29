@@ -181,8 +181,6 @@ type Confirm struct {
 	promptText   string
 	helperText   string
 	separator    string
-	yesText      string
-	noText       string
 	defaultValue bool
 	theme        Theme
 }
@@ -193,11 +191,14 @@ func NewConfirm() *Confirm {
 		promptText:   "Are you sure?",
 		helperText:   "",
 		separator:    ": ",
-		yesText:      "Yes",
-		noText:       "No",
 		defaultValue: false,
 		theme:        DefaultTheme,
 	}
+}
+
+func (c *Confirm) WithPromptSymbol(p string) *Confirm {
+	c.promptSymbol = p
+	return c
 }
 
 func (c *Confirm) WithPromptText(p string) *Confirm {
@@ -205,7 +206,7 @@ func (c *Confirm) WithPromptText(p string) *Confirm {
 	return c
 }
 
-func (c *Confirm) WithHelper(txt string) *Confirm {
+func (c *Confirm) WithHelperText(txt string) *Confirm {
 	c.helperText = txt
 	return c
 }
@@ -220,36 +221,36 @@ func (c *Confirm) WithTheme(th Theme) *Confirm {
 	return c
 }
 
-func (c *Confirm) WithYesText(txt string) *Confirm {
-	c.yesText = txt
-	return c
-}
-
-func (c *Confirm) WithNoText(txt string) *Confirm {
-	c.noText = txt
-	return c
-}
-
-func (c *Confirm) WithDefault(val bool) *Confirm {
+func (c *Confirm) WithDefaultOption(val bool) *Confirm {
 	c.defaultValue = val
 	return c
 }
 
-func (c *Confirm) Render() (bool, error) {
-	// Save cursor before printing the prompt
+func setCursorRestore() {
 	fmt.Print("\033[s")
+}
 
-	fmt.Println()
+func restoreCursor() {
+	fmt.Print("\033[u\033[J")
+}
+
+func (c *Confirm) Render() (bool, error) {
+	setCursorRestore()
 
 	// Helper + default
+	fmt.Println()
+
+	yChar := "y"
+	nChar := "N"
 	if c.helperText != "" || c.defaultValue {
 		helper := c.helperText
 		if helper != "" {
 			helper += " "
 		}
-		defVal := c.noText
+		defVal := "No"
 		if c.defaultValue {
-			defVal = c.yesText
+			yChar, nChar = "Y", "n"
+			defVal = "Yes"
 		}
 		helper += "(Default: " + defVal + ")"
 		fmt.Println(c.theme.HelperTextStyle(helper))
@@ -259,7 +260,7 @@ func (c *Confirm) Render() (bool, error) {
 	fmt.Printf("%s%s%s%s",
 		c.theme.PromptSymbolStyle(c.promptSymbol),
 		c.theme.PromptTextStyle(c.promptText),
-		c.theme.ConfirmationTextStyle(" ["+c.yesText+"/"+c.noText+"]"),
+		c.theme.ConfirmationTextStyle(" ["+yChar+"/"+nChar+"]"),
 		c.separator,
 	)
 
@@ -267,26 +268,15 @@ func (c *Confirm) Render() (bool, error) {
 	reader := bufio.NewReader(os.Stdin)
 	input, err := reader.ReadString('\n')
 	if err != nil {
-		// restore and clear everything from saved position downwards
-		fmt.Print("\033[u\033[J")
+		restoreCursor()
 		return false, ErrInterrupted
 	}
 
-	// Clean input
-	input = strings.TrimSpace(strings.ToLower(input))
-
-	// Apply default if empty
-	if input == "" {
-		// restore and clear everything from saved position downwards
-		fmt.Print("\033[u\033[J")
-		return c.defaultValue, nil
-	}
-
-	// Cleanup
-	fmt.Print("\033[u\033[J")
-
 	// Parse yes/no
-	switch input {
+	restoreCursor()
+	switch strings.TrimSpace(strings.ToLower(input)) {
+	case "":
+		return c.defaultValue, nil
 	case "y", "yes":
 		return true, nil
 	case "n", "no":
