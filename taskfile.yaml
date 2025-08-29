@@ -1,0 +1,28 @@
+# Taskfile definitions for Asky
+
+version: "3"
+
+vars:
+  BANNER: 'echo -e "\\033[1;33m$\\033[0m"'
+  LIB_NAME: Asky
+
+tasks:
+  default:
+    cmds:
+      - task: test
+
+  tidy:
+    desc: Tidy up the {{.APP_NAME}} project
+    silent: true
+    cmds:
+      - "{{.BANNER}} Tidying up the project"
+      - go mod tidy
+      - go mod verify
+      - echo
+
+  test:
+    desc: Run the tests for the {{.APP_NAME}} project
+    silent: true
+    cmds:
+      - "{{.BANNER}} Running tests"
+      - go test -v ./...
