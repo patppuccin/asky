@@ -61,7 +61,6 @@ func (ti *TextInput) Render() (string, error) {
 	os.Stdout.Write([]byte("\033[s"))
 
 	// Print the helper + prompt
-	// fmt.Println()
 	os.Stdout.Write([]byte("\n"))
 	if ti.helperText != "" || ti.defaultValue != "" {
 		helper := ti.helperText

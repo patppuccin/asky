@@ -173,7 +173,7 @@ func (p *Progress) renderOnce() {
 	}
 	percent += "% "
 
-	os.Stdout.Write([]byte("\r\033[K")) // restore cursor + clear line
+	os.Stdout.Write([]byte("\r")) // restore cursor + clear line
 	os.Stdout.WriteString(p.theme.SecondaryStyle(p.progressSymbol))
 	os.Stdout.WriteString(p.theme.PrimaryStyle(p.progressText))
 	os.Stdout.WriteString(p.theme.AccentStyle(p.pattern.BarPadLeft))
