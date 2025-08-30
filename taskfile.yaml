@@ -12,7 +12,7 @@ tasks:
       - task: test
 
   tidy:
-    desc: Tidy up the {{.APP_NAME}} project
+    desc: Tidy up the {{.LIB_NAME}} project
     silent: true
     cmds:
       - "{{.BANNER}} Tidying up the project"
@@ -20,8 +20,11 @@ tasks:
       - go mod verify
       - echo
 
+  tape:
+    desc: Record a demo of the {{.LIB_NAME}} project
+
   test:
-    desc: Run the tests for the {{.APP_NAME}} project
+    desc: Run the tests for the {{.LIB_NAME}} project
     silent: true
     cmds:
       - "{{.BANNER}} Running tests"

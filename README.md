@@ -1,6 +1,6 @@
 # ASKY - Plain & Simple TUI Prompt Library for Go
 
-![](./assets/demo.gif)
+![](./assets/asky-showcase.gif)
 
 **asky** is a simple, minimal TUI prompt library for Go. It provides a set of pre-built prompts and helpers for common use cases, such as text inputs, password inputs, confirmation prompts, and more. The library is designed to be easy to use and extend, with a focus on simplicity and readability.
 
