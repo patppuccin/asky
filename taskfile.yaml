@@ -1,0 +1,48 @@
+# Taskfile definitions for Asky
+
+version: "3"
+
+vars:
+  BANNER: 'echo -e "\\033[1;33m$\\033[0m"'
+  LIB_NAME: Asky
+
+tasks:
+  default:
+    cmds:
+      - task: test
+
+  tidy:
+    desc: Tidy up the {{.LIB_NAME}} project
+    silent: true
+    cmds:
+      - "{{.BANNER}} Tidying up the project"
+      - go mod tidy
+      - go mod verify
+      - echo
+
+  build:
+    desc: Build the {{.LIB_NAME}} project showscase binary
+    silent: true
+    env:
+      CGO_ENABLED: 0
+      GOOS: linux
+      GOARCH: amd64
+    cmds:
+      - "{{.BANNER}} Building the showscase binary"
+      - go build -ldflags="-s -w" -trimpath -o bin/asky-showcase examples/showcase.go
+
+  tape:
+    desc: Record a demo of the {{.LIB_NAME}} project
+    silent: true
+    deps:
+      - task: build
+    cmds:
+      - "{{.BANNER}} Recording the showcase"
+      - docker run --rm -i -v ${PWD}:/vhs -w /vhs ghcr.io/charmbracelet/vhs asky.tape 
+
+  test:
+    desc: Run the tests for the {{.LIB_NAME}} project
+    silent: true
+    cmds:
+      - "{{.BANNER}} Running tests"
+      - go test -v ./...
