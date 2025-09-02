@@ -7,11 +7,6 @@ import (
 	"atomicgo.dev/keyboard/keys"
 )
 
-type SelectionOption struct {
-	Value string
-	Label string
-}
-
 // Definition ----------------------------------------------
 type Select struct {
 	theme                 Theme

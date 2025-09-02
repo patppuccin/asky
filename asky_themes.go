@@ -2,6 +2,21 @@ package asky
 
 import "strconv"
 
+// PrimaryStyle
+// SecondaryStyle
+// TertiaryStyle
+// AccentStyle
+// MutedStyle
+
+// SuccessStyle
+// InfoStyle
+// WarningStyle
+// ErrorStyle
+// NeutralStyle
+
+// ActiveStyle
+// InactiveStyle
+
 type Theme struct {
 	Primary   string // Labels
 	Secondary string // Symbols
