@@ -93,6 +93,61 @@ func ageValidator(age string) (string, bool) {
 
 func main() {
 
+	faveLang, err := asky.NewSingleSelect().
+		WithLabel("Pick the favourite language").
+		WithHelp("This is used to tailor the recommendations").
+		WithSeparator("").
+		WithPageSize(25).
+		WithChoices([]asky.Choice{
+			// Systems / Low-level
+			{Value: "c", Label: "C"},
+			{Value: "cpp", Label: "C++"},
+			{Value: "rs", Label: "Rust"},
+			{Value: "zig", Label: "Zig"},
+
+			// General-purpose / OO heavyweights
+			{Value: "java", Label: "Java", Description: "Java is a general-purpose, class-based, object-oriented programming language"},
+			{Value: "cs", Label: "C#"},
+			{Value: "kt", Label: "Kotlin"},
+			{Value: "swift", Label: "Swift"},
+			{Value: "scala", Label: "Scala"},
+
+			// Scripting / Dynamic
+			{Value: "py", Label: "Python"},
+			{Value: "js", Label: "JavaScript / TypeScript"},
+			{Value: "php", Label: "PHP"},
+			{Value: "rb", Label: "Ruby"},
+			{Value: "perl", Label: "Perl"},
+
+			// Functional / Multi-paradigm
+			{Value: "hs", Label: "Haskell"},
+			{Value: "clj", Label: "Clojure"},
+			{Value: "erl", Label: "Erlang"},
+			{Value: "elx", Label: "Elixir"},
+			{Value: "fsharp", Label: "F#"},
+			{Value: "ml", Label: "OCaml"},
+
+			// Emerging / Modern
+			{Value: "go", Label: "Go"},
+			{Value: "dart", Label: "Dart"},
+			{Value: "nim", Label: "Nim"},
+		}).
+		WithTheme(asky.ThemeDefault).
+		Render()
+	if err != nil {
+		if errors.Is(err, asky.ErrInterrupted) {
+			fmt.Println("Input Cancelled")
+			return
+		}
+		fmt.Println("Error: " + err.Error())
+	} else {
+		fmt.Println(
+			asky.ThemeDefault.SuccessStyle("[+]"),
+			asky.ThemeDefault.PrimaryStyle("User's Favourite Languages:"),
+			asky.ThemeDefault.AccentStyle(faveLang.Label),
+		)
+		return
+	}
 	fmt.Print(asky.ThemeDefault.InfoStyle("\n# Showcasing the asky library ---------------\n"))
 
 	// --- Prompt Showcase: Text Input --------------------------
@@ -186,65 +241,60 @@ func main() {
 	}
 
 	// --- Prompt Showcase: Select -----------------------------
-	faveLangs, err := asky.NewSelect().
-		WithPromptText("Pick the favourite language").
-		WithHelpText("This is used to tailor the recommendations").
-		WithPromptSeparator("").
-		WithMaxOptionsVisible(5).
-		WithOptions([]asky.SelectionOption{
-			// Systems / Low-level
-			{Value: "c", Label: "C"},
-			{Value: "cpp", Label: "C++"},
-			{Value: "rs", Label: "Rust"},
-			{Value: "zig", Label: "Zig"},
+	// faveLang, err := asky.NewSingleSelect().
+	// 	WithLabel("Pick the favourite language").
+	// 	WithHelp("This is used to tailor the recommendations").
+	// 	WithSeparator("").
+	// 	WithPageSize(5).
+	// 	WithChoices([]asky.Choice{
+	// 		// Systems / Low-level
+	// 		{Value: "c", Label: "C"},
+	// 		{Value: "cpp", Label: "C++"},
+	// 		{Value: "rs", Label: "Rust"},
+	// 		{Value: "zig", Label: "Zig"},
 
-			// General-purpose / OO heavyweights
-			{Value: "java", Label: "Java"},
-			{Value: "cs", Label: "C#"},
-			{Value: "kt", Label: "Kotlin"},
-			{Value: "swift", Label: "Swift"},
-			{Value: "scala", Label: "Scala"},
+	// 		// General-purpose / OO heavyweights
+	// 		{Value: "java", Label: "Java"},
+	// 		{Value: "cs", Label: "C#"},
+	// 		{Value: "kt", Label: "Kotlin"},
+	// 		{Value: "swift", Label: "Swift"},
+	// 		{Value: "scala", Label: "Scala"},
 
-			// Scripting / Dynamic
-			{Value: "py", Label: "Python"},
-			{Value: "js", Label: "JavaScript / TypeScript"},
-			{Value: "php", Label: "PHP"},
-			{Value: "rb", Label: "Ruby"},
-			{Value: "perl", Label: "Perl"},
+	// 		// Scripting / Dynamic
+	// 		{Value: "py", Label: "Python"},
+	// 		{Value: "js", Label: "JavaScript / TypeScript"},
+	// 		{Value: "php", Label: "PHP"},
+	// 		{Value: "rb", Label: "Ruby"},
+	// 		{Value: "perl", Label: "Perl"},
 
-			// Functional / Multi-paradigm
-			{Value: "hs", Label: "Haskell"},
-			{Value: "clj", Label: "Clojure"},
-			{Value: "erl", Label: "Erlang"},
-			{Value: "elx", Label: "Elixir"},
-			{Value: "fsharp", Label: "F#"},
-			{Value: "ml", Label: "OCaml"},
+	// 		// Functional / Multi-paradigm
+	// 		{Value: "hs", Label: "Haskell"},
+	// 		{Value: "clj", Label: "Clojure"},
+	// 		{Value: "erl", Label: "Erlang"},
+	// 		{Value: "elx", Label: "Elixir"},
+	// 		{Value: "fsharp", Label: "F#"},
+	// 		{Value: "ml", Label: "OCaml"},
 
-			// Emerging / Modern
-			{Value: "go", Label: "Go"},
-			{Value: "dart", Label: "Dart"},
-			{Value: "nim", Label: "Nim"},
-		}).
-		WithMultiSelection().
-		WithTheme(asky.ThemeDefault).
-		Render()
-	if err != nil {
-		if errors.Is(err, asky.ErrInterrupted) {
-			fmt.Println("Input Cancelled")
-			return
-		}
-		fmt.Println("Error: " + err.Error())
-	}
+	// 		// Emerging / Modern
+	// 		{Value: "go", Label: "Go"},
+	// 		{Value: "dart", Label: "Dart"},
+	// 		{Value: "nim", Label: "Nim"},
+	// 	}).
+	// 	WithTheme(asky.ThemeDefault).
+	// 	Render()
+	// if err != nil {
+	// 	if errors.Is(err, asky.ErrInterrupted) {
+	// 		fmt.Println("Input Cancelled")
+	// 		return
+	// 	}
+	// 	fmt.Println("Error: " + err.Error())
+	// }
 
-	faveLangsList := make([]string, len(faveLangs))
-	for i, option := range faveLangs {
-		faveLangsList[i] = option.Label
-	}
-	fmt.Println(
-		asky.ThemeDefault.SuccessStyle("[+]"),
-		asky.ThemeDefault.PrimaryStyle("User's Favourite Languages:"),
-		asky.ThemeDefault.AccentStyle(strings.Join(faveLangsList, ", ")),
-	)
+	// fmt.Println(
+	// 	asky.ThemeDefault.SuccessStyle("[+]"),
+	// 	asky.ThemeDefault.PrimaryStyle("User's Favourite Languages:"),
+	// 	asky.ThemeDefault.AccentStyle(faveLang.Label),
+	// )
 
 	// --- Prompt Showcase: Confirmation -----------------------
 	ok, _ := asky.NewConfirm().

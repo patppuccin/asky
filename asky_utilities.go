@@ -15,6 +15,7 @@ func init() {
 // Custom Errors -------------------------------------------
 var ErrInterrupted = errors.New("prompt interrupted")
 var ErrNoOptions = errors.New("no options available")
+var ErrTerminalTooSmall = errors.New("terminal dimensions too small")
 
 // ANSI Escape Functions -----------------------------------
 func hideCursor()       { os.Stdout.Write([]byte("\033[?25l")) }
@@ -33,6 +34,15 @@ func cursorMoveRight(n int) {
 		os.Stdout.Write([]byte("\033[" + strconv.Itoa(n) + "C"))
 	}
 }
+
+// Helper Functions ---------------------------------------
+// func getTerminalDimensions() (int, int, error) {
+// 	width, height, err := term.GetSize(int(os.Stdout.Fd()))
+// 	if err != nil {
+// 		return 0, 0, err
+// 	}
+// 	return width, height, nil
+// }
 
 // // IsDumbTerminal returns true if output is redirected or TERM=dumb
 // func IsDumbTerminal() bool {

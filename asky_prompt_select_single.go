@@ -2,419 +2,310 @@ package asky
 
 import (
 	"os"
+	"strconv"
+	"strings"
 
 	"atomicgo.dev/keyboard"
 	"atomicgo.dev/keyboard/keys"
 )
 
-// Definition ----------------------------------------------
-type Select struct {
-	theme                 Theme
-	promptSymbol          string
-	promptText            string
-	promptSeparator       string
-	helpText              string
-	options               []SelectionOption
-	defaultOption         []int
-	checkedOptionSymbol   string
-	uncheckedOptionSymbol string
-	allowMultiple         bool
-	maxOptionsVisible     int
-	selectedOptions       map[int]bool // Track selected options
-}
-
 // Initialization ------------------------------------------
-func NewSelect() *Select {
-	return &Select{
-		theme:                 ThemeDefault,
-		promptSymbol:          "[?] ",
-		promptText:            "Select an option",
-		promptSeparator:       ": ",
-		helpText:              "",
-		defaultOption:         []int{},
-		options:               []SelectionOption{},
-		checkedOptionSymbol:   " + ",
-		uncheckedOptionSymbol: "   ",
-		maxOptionsVisible:     10,
-		selectedOptions:       make(map[int]bool),
+func NewSingleSelect() *SingleSelect {
+	return &SingleSelect{
+		theme:           ThemeDefault,
+		prefix:          "[?] ",
+		label:           "Select an option",
+		separator:       ": ",
+		help:            "",
+		defaultChoice:   -1,
+		choices:         []Choice{},
+		cursorIndicator: " * ",
+		selectionMarker: " + ",
+		pageSize:        10,
 	}
 }
 
-func (ss *Select) WithTheme(th Theme) *Select        { ss.theme = th; return ss }
-func (ss *Select) WithPromptSymbol(p string) *Select { ss.promptSymbol = p; return ss }
-func (ss *Select) WithPromptText(p string) *Select   { ss.promptText = p; return ss }
-func (ss *Select) WithPromptSeparator(sep string) *Select {
-	ss.promptSeparator = sep
+func (ss *SingleSelect) WithTheme(th Theme) *SingleSelect        { ss.theme = th; return ss }
+func (ss *SingleSelect) WithPrefix(p string) *SingleSelect       { ss.prefix = p; return ss }
+func (ss *SingleSelect) WithLabel(p string) *SingleSelect        { ss.label = p; return ss }
+func (ss *SingleSelect) WithSeparator(sep string) *SingleSelect  { ss.separator = sep; return ss }
+func (ss *SingleSelect) WithHelp(txt string) *SingleSelect       { ss.help = txt; return ss }
+func (ss *SingleSelect) WithDefaultChoice(idx int) *SingleSelect { ss.defaultChoice = idx; return ss }
+func (ss *SingleSelect) WithChoiceOptional() *SingleSelect       { ss.choiceOptional = true; return ss }
+func (ss *SingleSelect) WithChoices(ch []Choice) *SingleSelect   { ss.choices = ch; return ss }
+func (ss *SingleSelect) WithPageSize(n int) *SingleSelect        { ss.pageSize = n; return ss }
+func (ss *SingleSelect) WithCursorIndicator(ind string) *SingleSelect {
+	ss.cursorIndicator = ind
 	return ss
 }
-func (ss *Select) WithHelpText(txt string) *Select { ss.helpText = txt; return ss }
-func (ss *Select) WithDefaultOption(val []int) *Select {
-	ss.defaultOption = val
-	// Initialize selected options based on defaults
-	for _, idx := range val {
-		if idx >= 0 && idx < len(ss.options) {
-			ss.selectedOptions[idx] = true
-		}
-	}
-	return ss
-}
-func (ss *Select) WithOptions(opts []SelectionOption) *Select { ss.options = opts; return ss }
-func (ss *Select) WithMultiSelection() *Select                { ss.allowMultiple = true; return ss }
-func (ss *Select) WithCheckedOptionSymbol(sym string) *Select {
-	ss.checkedOptionSymbol = sym
-	return ss
-}
-func (ss *Select) WithUncheckedOptionSymbol(sym string) *Select {
-	ss.uncheckedOptionSymbol = sym
-	return ss
-}
-func (ss *Select) WithMaxOptionsVisible(n int) *Select {
-	ss.maxOptionsVisible = n
+func (ss *SingleSelect) WithSelectionMarker(mrk string) *SingleSelect {
+	ss.selectionMarker = mrk
 	return ss
 }
 
 // Presentation --------------------------------------------
-func (ss *Select) Render() ([]SelectionOption, error) {
+func (ss *SingleSelect) Render() (Choice, error) {
+
+	// Sanity check to prevent no choices rendering
+	if len(ss.choices) == 0 {
+		return Choice{}, ErrNoOptions
+	}
+
+	// _, h, _ := term.GetSize(int(os.Stdout.Fd()))
+	// if h < 15 {
+	// 	return Choice{}, ErrTerminalTooSmall
+	// }
+
+	searchQuery := ""
+	searchMode := false
+	filteredChoices := ss.choices
+	pageSize := min(ss.pageSize, len(filteredChoices))
+
+	cursorIdx := 0                                // Cursor index (defaults to the first option)
+	startIdx := 0                                 // Start index of the visible options
+	endIdx := min(len(filteredChoices), pageSize) // End index of the visible options
+
+	// Hide & save cursor before prompt
 	hideCursor()
-	if len(ss.options) == 0 {
+	saveCursor()
+
+	// Line constructors
+	helpLine := ss.theme.MutedStyle(ss.help) // + "th: " + strconv.Itoa(h)
+	promptLine := ss.theme.SecondaryStyle(ss.prefix) + ss.theme.PrimaryStyle(ss.label+ss.separator)
+	searchLine := ss.theme.MutedStyle("Search: ")
+	infoLineNormalMode := ss.theme.MutedStyle("↑/↓ or j/k move . space select . enter confirm . TAB search")
+	infoLineSearchMode := ss.theme.MutedStyle("↑/↓ move . space select . enter confirm . type search . ESC/TAB nav")
+
+	// Helper: Choice Renderer based on the state, selection & cursor
+	renderChoice := func(c Choice, cur, sel bool) string {
+		var choiceLine string
+		switch {
+		case sel:
+			choiceLine = ss.selectionMarker + c.Label
+		case cur:
+			choiceLine = ss.cursorIndicator + c.Label
+		default:
+			choiceLine = strings.Repeat(" ", len(ss.selectionMarker)) + c.Label
+		}
+
+		if c.Disabled {
+			return ss.theme.MutedStyle(choiceLine)
+		}
+		if sel {
+			return ss.theme.SuccessStyle(choiceLine)
+		}
+		if cur {
+			return ss.theme.SecondaryStyle(choiceLine)
+		}
+		return ss.theme.AccentStyle(choiceLine)
+	}
+
+	// Helper: Filter choices based on search query (for search mode)
+	filterChoices := func(query string) []Choice {
+		if query == "" {
+			return ss.choices
+		}
+
+		var filtered []Choice
+		query = strings.ToLower(query)
+
+		for _, choice := range ss.choices {
+			if strings.Contains(strings.ToLower(choice.Label), query) {
+				filtered = append(filtered, choice)
+			}
+		}
+		return filtered
+	}
+
+	// Helper: Reset cursor position after filtering
+	resetCursorAfterFilter := func() {
+		if len(filteredChoices) == 0 {
+			cursorIdx = 0
+			startIdx = 0
+			endIdx = 0
+			return
+		}
+
+		// Keep cursor in bounds
+		if cursorIdx >= len(filteredChoices) {
+			cursorIdx = len(filteredChoices) - 1
+		}
+
+		// Recalculate pagination
+		if cursorIdx < startIdx {
+			startIdx = cursorIdx
+		}
+		if cursorIdx >= startIdx+pageSize {
+			startIdx = max(0, cursorIdx-pageSize+1)
+		}
+		endIdx = min(startIdx+pageSize, len(filteredChoices))
+	}
+
+	// Helper: Navigate choices up based on cursor position
+	navigateUp := func() {
+		if cursorIdx > 0 {
+			cursorIdx--
+			// Scroll up if needed
+			if cursorIdx < startIdx {
+				startIdx = cursorIdx
+				endIdx = min(startIdx+pageSize, len(filteredChoices))
+			}
+		}
+	}
+
+	// Helper: Navigate choices down based on cursor position
+	navigateDown := func() {
+		if cursorIdx < len(filteredChoices)-1 {
+			cursorIdx++
+			// Scroll down if needed
+			if cursorIdx >= endIdx {
+				endIdx = cursorIdx + 1
+				startIdx = max(0, endIdx-pageSize)
+			}
+		}
+	}
+
+	// Helper: Redraw the prompt with the current state
+	redraw := func(cursor, start, end int) {
 		restoreCursor()
-		clearTillEnd()
-		showCursor()
-		return []SelectionOption{}, ErrNoOptions
-	}
-
-	// Initialize selected options with defaults
-	if len(ss.selectedOptions) == 0 && len(ss.defaultOption) > 0 {
-		for _, idx := range ss.defaultOption {
-			if idx >= 0 && idx < len(ss.options) {
-				ss.selectedOptions[idx] = true
-			}
-		}
-	}
-
-	selIdx := 0                                          // Selection index (defaults to the first option)
-	startIdx := 0                                        // Start index of the visible options
-	endIdx := min(len(ss.options), ss.maxOptionsVisible) // End index of the visible options
-	saveCursor()                                         // Save cursor state before prompt
-
-	// Help line construction
-	helpLine := ""
-	if ss.helpText != "" {
-		helpLine += ss.theme.MutedStyle(ss.helpText)
-	}
-
-	// Prompt line construction
-	promptLine := ss.theme.SecondaryStyle(ss.promptSymbol)
-	promptLine += ss.theme.PrimaryStyle(ss.promptText + ss.promptSeparator + "\n")
-
-	// Info line construction
-	infoText := "↑/↓ or j/k to move"
-	if ss.allowMultiple {
-		infoText += " . space to toggle"
-	} else {
-		infoText += " . space to select"
-	}
-	infoText += " . enter to confirm"
-	infoLine := ss.theme.MutedStyle(infoText)
-
-	// Initial render - show first option as highlighted
-	initialOptions := make([]string, endIdx-startIdx)
-	for i := startIdx; i < endIdx; i++ {
-		idx := i - startIdx
-		if i == selIdx {
-			if ss.selectedOptions[i] {
-				initialOptions[idx] = ss.theme.SuccessStyle(ss.checkedOptionSymbol + "> " + ss.options[i].Label)
-			} else {
-				initialOptions[idx] = ss.theme.SecondaryStyle(ss.uncheckedOptionSymbol) + ss.theme.PrimaryStyle("> "+ss.options[i].Label)
-			}
-		} else {
-			if ss.selectedOptions[i] {
-				initialOptions[idx] = ss.theme.SuccessStyle(ss.checkedOptionSymbol + ss.options[i].Label)
-			} else {
-				initialOptions[idx] = ss.theme.SecondaryStyle(ss.uncheckedOptionSymbol) + ss.theme.AccentStyle(ss.options[i].Label)
-			}
-		}
-	}
-
-	// Prompt Initial Renderer
-	os.Stdout.WriteString("\n")
-	if ss.helpText != "" {
-		os.Stdout.WriteString(helpLine + "\n")
-	}
-	os.Stdout.WriteString(promptLine)
-
-	// Initial options render
-	for i := startIdx; i < endIdx; i++ {
-		if i == selIdx {
-			if ss.selectedOptions[i] {
-				os.Stdout.WriteString(ss.theme.SuccessStyle(ss.checkedOptionSymbol + "> " + ss.options[i].Label))
-			} else {
-				os.Stdout.WriteString(ss.theme.SecondaryStyle(ss.uncheckedOptionSymbol) + ss.theme.PrimaryStyle("> "+ss.options[i].Label))
-			}
-		} else {
-			if ss.selectedOptions[i] {
-				os.Stdout.WriteString(ss.theme.SuccessStyle(ss.checkedOptionSymbol + ss.options[i].Label))
-			} else {
-				os.Stdout.WriteString(ss.theme.SecondaryStyle(ss.uncheckedOptionSymbol) + ss.theme.AccentStyle(ss.options[i].Label))
-			}
-		}
 		os.Stdout.WriteString("\n")
-	}
-	os.Stdout.WriteString("\n\r" + infoLine)
-
-	// Prompt Redraw Renderer
-	redraw := func(sel, start, end int) {
-		restoreCursor()
-
-		// Redraw help line
-		if ss.helpText != "" {
-			os.Stdout.WriteString("\n" + helpLine)
-		} else {
-			os.Stdout.WriteString("\n")
+		if ss.help != "" {
+			os.Stdout.WriteString(helpLine + "\n")
 		}
-		clearLineTillEnd()
+		os.Stdout.WriteString("\r" + promptLine + "\n")
 
-		// Redraw prompt line
-		os.Stdout.WriteString("\r\n" + promptLine)
+		// Search line with mode indicator
+		searchLine := ss.theme.MutedStyle("Search: ") + searchQuery
+		if searchMode {
+			searchLine += ss.theme.AccentStyle(" ◂ " + strconv.Itoa(len(filteredChoices)) + " hits") // Visual indicator for search mode
+		}
+		os.Stdout.WriteString("\r" + searchLine)
 		clearLineTillEnd()
+		os.Stdout.WriteString("\n")
 
 		// Redraw options
 		for i := start; i < end; i++ {
-			os.Stdout.WriteString("\r")
-			if i == sel {
-				if ss.selectedOptions[i] {
-					os.Stdout.WriteString(ss.theme.SuccessStyle(ss.checkedOptionSymbol + "> " + ss.options[i].Label))
-				} else {
-					os.Stdout.WriteString(ss.theme.SecondaryStyle(ss.uncheckedOptionSymbol) + ss.theme.PrimaryStyle("> "+ss.options[i].Label))
-				}
-			} else {
-				if ss.selectedOptions[i] {
-					os.Stdout.WriteString(ss.theme.SuccessStyle(ss.checkedOptionSymbol + ss.options[i].Label))
-				} else {
-					os.Stdout.WriteString(ss.theme.SecondaryStyle(ss.uncheckedOptionSymbol) + ss.theme.AccentStyle(ss.options[i].Label))
-				}
-			}
+			c := filteredChoices[i]
+			cur := i == cursor
+			sel := c.Value == ss.selectedChoice.Value
+			os.Stdout.WriteString("\r" + renderChoice(c, cur, sel))
 			clearLineTillEnd()
 			os.Stdout.WriteString("\n")
 		}
 
 		// Clear any remaining lines
-		for i := end - start; i < ss.maxOptionsVisible; i++ {
-			clearLineTillEnd()
-			os.Stdout.WriteString("\n")
+		for i := end - start; i < pageSize; i++ {
+			os.Stdout.WriteString("\r") // Move to beginning of line
+			clearLineTillEnd()          // Clear the line
+			os.Stdout.WriteString("\n") // Move to next line
 		}
 
-		os.Stdout.WriteString("\n\r" + infoLine)
+		// Show appropriate info line
+		if searchMode {
+			os.Stdout.WriteString("\n\r" + infoLineSearchMode)
+		} else {
+			os.Stdout.WriteString("\n\r" + infoLineNormalMode)
+		}
 		clearLineTillEnd()
 	}
 
+	// Initialize the selected choice with the default choice
+	if ss.defaultChoice >= 0 && ss.defaultChoice < len(ss.choices) {
+		ss.selectedChoice = ss.choices[ss.defaultChoice]
+	}
+
+	// Prompt Initial Renderer
+	os.Stdout.WriteString("\n")
+	if ss.help != "" {
+		os.Stdout.WriteString(helpLine + "\n")
+	}
+	os.Stdout.WriteString("\r" + promptLine + "\n")
+	os.Stdout.WriteString("\r" + searchLine + "\n")
+	for i := startIdx; i < endIdx; i++ {
+		c := filteredChoices[i]
+		cur := i == cursorIdx
+		sel := c.Value == ss.selectedChoice.Value
+		os.Stdout.WriteString("\r" + renderChoice(c, cur, sel) + "\n")
+	}
+	if searchMode {
+		os.Stdout.WriteString("\n\r" + infoLineSearchMode)
+	} else {
+		os.Stdout.WriteString("\n\r" + infoLineNormalMode)
+	}
+
+	// Intercept keyboard events & handle them
 	err := keyboard.Listen(func(key keys.Key) (stop bool, err error) {
 		switch key.Code {
-		case keys.CtrlC, keys.Escape:
+		case keys.Tab:
+			searchMode = !searchMode
+		case keys.CtrlC:
 			return true, ErrInterrupted
+		case keys.Escape:
+			if searchMode {
+				searchMode = false // In search mode, ESC exits search mode
+			}
 		case keys.Enter:
-			return true, nil
-		case keys.Up, keys.Left, keys.KeyCode('k'), keys.KeyCode('h'):
-			// Navigate up
-			if selIdx > 0 {
-				selIdx--
-				// Scroll up if needed
-				if selIdx < startIdx {
-					startIdx = selIdx
-					endIdx = min(startIdx+ss.maxOptionsVisible, len(ss.options))
-				}
+			if len(filteredChoices) == 0 {
+				return ss.choiceOptional, nil
 			}
-		case keys.Down, keys.Right, keys.KeyCode('j'), keys.KeyCode('l'):
-			// Navigate down
-			if selIdx < len(ss.options)-1 {
-				selIdx++
-				// Scroll down if needed
-				if selIdx >= endIdx {
-					endIdx = selIdx + 1
-					startIdx = max(0, endIdx-ss.maxOptionsVisible)
-				}
+			if ss.selectedChoice == (Choice{}) {
+				return ss.choiceOptional, nil
 			}
+			return !ss.selectedChoice.Disabled, nil
+		case keys.Up, keys.Left:
+			navigateUp()
+		case keys.Down, keys.Right:
+			navigateDown()
 		case keys.Space:
-			// Toggle selection
-			if ss.allowMultiple {
-				ss.selectedOptions[selIdx] = !ss.selectedOptions[selIdx]
+			if len(filteredChoices) > 0 && cursorIdx < len(filteredChoices) && !filteredChoices[cursorIdx].Disabled {
+				ss.selectedChoice = filteredChoices[cursorIdx]
+			}
+		case keys.Backspace:
+			if searchMode && len(searchQuery) > 0 {
+				searchQuery = searchQuery[:len(searchQuery)-1]
+				filteredChoices = filterChoices(searchQuery)
+				resetCursorAfterFilter()
+			}
+		case keys.RuneKey:
+			if len(key.Runes) == 0 {
+				break
+			}
+
+			if searchMode {
+				// In search mode, add characters to query
+				searchQuery += string(key.Runes[0])
+				filteredChoices = filterChoices(searchQuery)
+				resetCursorAfterFilter()
 			} else {
-				// Single select - clear all others and select current
-				ss.selectedOptions = make(map[int]bool)
-				ss.selectedOptions[selIdx] = true
+				// In nav mode, handle vi-style navigation
+				switch key.Runes[0] {
+				case 'j':
+					navigateDown()
+				case 'k':
+					navigateUp()
+				case 'h':
+					navigateUp()
+				case 'l':
+					navigateDown()
+				}
 			}
 		}
 
-		redraw(selIdx, startIdx, endIdx)
+		redraw(cursorIdx, startIdx, endIdx)
 		return false, nil
 	})
 
+	// Handle errors
 	if err != nil {
 		restoreCursor()
 		clearTillEnd()
 		showCursor()
-		return []SelectionOption{}, err
+		return Choice{}, err
 	}
 
-	if ss.allowMultiple {
-		// For multi-select, return all selected options
-		var selections []SelectionOption
-		for idx, selected := range ss.selectedOptions {
-			if selected {
-				selections = append(selections, ss.options[idx])
-			}
-		}
-		restoreCursor()
-		clearTillEnd()
-		showCursor()
-		return selections, nil
-	}
-
+	// Restore state & return the selected choice
 	restoreCursor()
 	clearTillEnd()
 	showCursor()
-	// Return currently highlighted option if nothing selected
-	return []SelectionOption{ss.options[selIdx]}, nil
+	return ss.selectedChoice, nil
 }
-
-// package asky
-
-// import (
-// 	"os"
-// 	"strings"
-
-// 	"atomicgo.dev/keyboard"
-// 	"atomicgo.dev/keyboard/keys"
-// )
-
-// type SelectionOption struct {
-// 	Value string
-// 	Label string
-// }
-
-// // Definition ----------------------------------------------
-// type Select struct {
-// 	theme                 Theme
-// 	promptSymbol          string
-// 	promptText            string
-// 	promptSeparator       string
-// 	helpText              string
-// 	options               []SelectionOption
-// 	defaultOption         []int
-// 	checkedOptionSymbol   string
-// 	uncheckedOptionSymbol string
-// 	allowMultiple         bool
-// 	maxOptionsVisible     int
-// }
-
-// // Initialization ------------------------------------------
-// func NewSelect() *Select {
-// 	return &Select{
-// 		theme:                 ThemeDefault,
-// 		promptSymbol:          "[?] ",
-// 		promptText:            "Select an option",
-// 		promptSeparator:       ": ",
-// 		helpText:              "",
-// 		defaultOption:         []int{},
-// 		options:               []SelectionOption{},
-// 		checkedOptionSymbol:   " + ",
-// 		uncheckedOptionSymbol: "   ",
-// 		maxOptionsVisible:     10,
-// 	}
-// }
-
-// func (ss *Select) WithTheme(th Theme) *Select        { ss.theme = th; return ss }
-// func (ss *Select) WithPromptSymbol(p string) *Select { ss.promptSymbol = p; return ss }
-// func (ss *Select) WithPromptText(p string) *Select   { ss.promptText = p; return ss }
-// func (ss *Select) WithPromptSeparator(sep string) *Select {
-// 	ss.promptSeparator = sep
-// 	return ss
-// }
-// func (ss *Select) WithHelpText(txt string) *Select            { ss.helpText = txt; return ss }
-// func (ss *Select) WithDefaultOption(val []int) *Select        { ss.defaultOption = val; return ss }
-// func (ss *Select) WithOptions(opts []SelectionOption) *Select { ss.options = opts; return ss }
-// func (ss *Select) WithMultiSelection() *Select                { ss.allowMultiple = true; return ss }
-// func (ss *Select) WithCheckedOptionSymbol(sym string) *Select {
-// 	ss.checkedOptionSymbol = sym
-// 	return ss
-// }
-// func (ss *Select) WithUncheckedOptionSymbol(sym string) *Select {
-// 	ss.uncheckedOptionSymbol = sym
-// 	return ss
-// }
-// func (ss *Select) WithMaxOptionsVisible(n int) *Select {
-// 	ss.maxOptionsVisible = n
-// 	return ss
-// }
-
-// // Presentation --------------------------------------------
-// func (ss *Select) Render() (SelectionOption, error) {
-
-// 	// var inBuf []rune // Input buffer to store user input
-// 	selIdx := 0                                          // Selection index (defaults to the first option)
-// 	startIdx := 0                                        // Start index of the visible options
-// 	endIdx := min(len(ss.options), ss.maxOptionsVisible) // End index of the visible options
-// 	saveCursor()                                         // Save cursor state before prompt
-
-// 	// Help line construction
-// 	helpLine := ""
-// 	if ss.helpText != "" {
-// 		helpLine += ss.theme.MutedStyle(ss.helpText)
-// 	}
-
-// 	// Prompt line construction
-// 	promptLine := ss.theme.SecondaryStyle(ss.promptSymbol)
-// 	promptLine += ss.theme.PrimaryStyle(ss.promptText + ss.promptSeparator + "\n")
-
-// 	// info line construction
-// 	infoLine := ss.theme.MutedStyle("↑/↓ or j/k to move . space to toggle . enter to confirm")
-
-// 	visibleCount := min(len(ss.options), ss.maxOptionsVisible)
-// 	options := make([]string, visibleCount)
-// 	for i := range visibleCount {
-// 		options[i] = ss.theme.SecondaryStyle(ss.uncheckedOptionSymbol) + ss.theme.AccentStyle(ss.options[i].Label)
-// 	}
-
-// 	// Prompt Initial Renderer
-// 	os.Stdout.WriteString("\n")
-// 	os.Stdout.WriteString(helpLine + "\n")
-// 	os.Stdout.WriteString(promptLine)
-// 	os.Stdout.WriteString(strings.Join(options, "\n"))
-// 	os.Stdout.WriteString("\n\n" + infoLine)
-
-// 	// Prompt Redraw Renderer
-// 	redraw := func(sel, start, end int) {
-// 		restoreCursor()
-// 		os.Stdout.WriteString("\n" + helpLine)
-// 		os.Stdout.WriteString("\n\r" + promptLine)
-// 		clearLineTillEnd()
-// 		for i := start; i < end; i++ {
-// 			if i == sel {
-// 				os.Stdout.WriteString(ss.theme.SuccessStyle(ss.options[i].Label))
-// 			} else {
-// 				os.Stdout.WriteString(ss.theme.SecondaryStyle(ss.uncheckedOptionSymbol) + ss.theme.AccentStyle(ss.options[i].Label))
-// 			}
-// 			os.Stdout.WriteString("\n")
-// 		}
-// 		clearLineTillEnd()
-
-// 	}
-
-// 	err := keyboard.Listen(func(key keys.Key) (stop bool, err error) {
-// 		switch key.Code {
-// 		case keys.CtrlC, keys.Escape:
-// 			return true, ErrInterrupted
-// 		case keys.Enter:
-// 			return true, nil
-// 		case keys.Up, keys.Left, keys.KeyCode('k'), keys.KeyCode('h'):
-// 			// navigate up
-// 		case keys.Down, keys.Right, keys.KeyCode('j'), keys.KeyCode('l'):
-// 			// navigate down
-// 		case keys.Space:
-// 			// toggle selection
-// 		}
-
-// 		redraw(sel, start, end)
-// 	})
-
-// }

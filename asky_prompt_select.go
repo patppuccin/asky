@@ -1,15 +1,10 @@
 package asky
 
-type SelectionOption struct {
-	Value    string
-	Label    string
-	Disabled bool
-}
-
 type Choice struct {
-	Value    string
-	Label    string
-	Disabled bool
+	Value       string
+	Label       string
+	Disabled    bool
+	Description string
 }
 
 type SingleSelect struct {
@@ -20,10 +15,11 @@ type SingleSelect struct {
 	help            string
 	choices         []Choice
 	defaultChoice   int
+	choiceOptional  bool
 	cursorIndicator string
 	selectionMarker string
 	pageSize        int
-	selectedChoice  int
+	selectedChoice  Choice
 }
 
 type MultiSelect struct {
