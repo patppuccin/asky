@@ -51,11 +51,6 @@ func (ss *SingleSelect) Render() (Choice, error) {
 		return Choice{}, ErrNoOptions
 	}
 
-	// _, h, _ := term.GetSize(int(os.Stdout.Fd()))
-	// if h < 15 {
-	// 	return Choice{}, ErrTerminalTooSmall
-	// }
-
 	searchQuery := ""
 	searchMode := false
 	filteredChoices := ss.choices

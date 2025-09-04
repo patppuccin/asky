@@ -61,10 +61,31 @@ Down
 Sleep 0.5s
 Space
 Sleep 0.5s
-Up
+Down
+Sleep 0.5s
+Down
+Sleep 0.5s
+Down
+Sleep 0.5s
+Down
+Sleep 0.5s
+Down
 Sleep 0.5s
 Up
 Sleep 0.5s
+Up
+Sleep 0.5s
+Space
+Sleep 2s
+Tab
+Sleep 2.5s
+Type@150ms "Java"
+Sleep 3s
+Down
+Sleep 0.5s
+Backspace 4
+Type@150ms "Erlang"
+Sleep 2s
 Space
 Sleep 2s
 Enter

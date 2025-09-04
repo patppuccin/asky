@@ -1,10 +1,9 @@
 package asky
 
 type Choice struct {
-	Value       string
-	Label       string
-	Disabled    bool
-	Description string
+	Value    string
+	Label    string
+	Disabled bool
 }
 
 type SingleSelect struct {

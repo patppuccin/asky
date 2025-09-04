@@ -4,28 +4,26 @@ import "strconv"
 
 // PrimaryStyle
 // SecondaryStyle
-// TertiaryStyle
-// AccentStyle
 // MutedStyle
-
 // SuccessStyle
 // InfoStyle
 // WarningStyle
 // ErrorStyle
 // NeutralStyle
-
-// ActiveStyle
-// InactiveStyle
+// DisabledStyle
+// CursorStyle
 
 type Theme struct {
 	Primary   string // Labels
 	Secondary string // Symbols
 	Accent    string // Updates
+	Neutral   string // Subtle
 	Muted     string
 	Success   string
 	Info      string
 	Warning   string
 	Error     string
+	Disabled  string
 }
 
 func (t Theme) PrimaryStyle(s string) string   { return hex(t.Primary, s) }
