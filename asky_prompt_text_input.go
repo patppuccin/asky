@@ -52,7 +52,8 @@ func (ti *TextInput) Render() (string, error) {
 
 	var inBuf []rune // Input buffer to store user input
 	cursorPos := 0   // Cursor position
-	saveCursor()     // Save cursor state before prompt
+	interrupted := false
+	os.Stdout.WriteString(ansiSaveCursor) // Save cursor state before prompt
 
 	// Help line construction
 	helpLine := ""
@@ -78,7 +79,7 @@ func (ti *TextInput) Render() (string, error) {
 
 	// Prompt Redraw Renderer
 	redraw := func(input []rune, cursor int, validationMsg string, ok *bool) {
-		restoreCursor()
+		os.Stdout.WriteString(ansiRestoreCursor)
 		os.Stdout.WriteString("\n")
 		if ti.validator != nil && validationMsg != "" {
 			if ok != nil && !*ok {
@@ -86,14 +87,14 @@ func (ti *TextInput) Render() (string, error) {
 			} else {
 				os.Stdout.WriteString(ti.theme.SuccessStyle(validationMsg))
 			}
-			clearLineTillEnd()
+			os.Stdout.WriteString(ansiClearLineEnd)
 			os.Stdout.WriteString("\n\r")
 		}
 
 		os.Stdout.WriteString(helpLine + "\n\r")
 		os.Stdout.WriteString(promptLine)
 		os.Stdout.WriteString(string(input))
-		clearLineTillEnd()
+		os.Stdout.WriteString(ansiClearLineEnd)
 		if cursor < len(input) {
 			cursorMoveLeft(len(input) - cursor)
 		}
@@ -101,8 +102,9 @@ func (ti *TextInput) Render() (string, error) {
 
 	err := keyboard.Listen(func(key keys.Key) (stop bool, err error) {
 		switch key.Code {
-		case keys.CtrlC, keys.Escape:
-			return true, ErrInterrupted
+		case keys.CtrlC:
+			interrupted = true
+			return true, nil
 		case keys.Enter:
 			if ti.validator != nil {
 				msg, ok := ti.validator(string(inBuf))
@@ -145,10 +147,12 @@ func (ti *TextInput) Render() (string, error) {
 		return false, nil
 	})
 
-	restoreCursor()
-	clearTillEnd()
+	os.Stdout.WriteString(ansiRestoreCursor + ansiClearScreenEnd + ansiReset + ansiShowCursor)
 	if err != nil {
 		return "", err
+	}
+	if interrupted {
+		return "", ErrInterrupted
 	}
 	return strings.TrimRight(string(inBuf), "\r\n"), nil
 }

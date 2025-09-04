@@ -18,40 +18,39 @@ var SpinnerPatternMoons = []string{"🌑 ", "🌒 ", "🌓 ", "🌔 ", "🌕 ", 
 
 // Definition -------------------------------------
 type Spinner struct {
-	labelText  string
-	helperText string
-	frames     []string
-	theme      Theme
-	stop       bool
-	wg         sync.WaitGroup
+	theme  Theme
+	frames []string
+	label  string
+	help   string
+	stop   bool
+	wg     sync.WaitGroup
 }
 
 // Constructors -----------------------------------
 func NewSpinner() *Spinner {
 	return &Spinner{
-		labelText: "Loading...",
-		frames:    SpinnerPatternDefault,
-		theme:     ThemeDefault,
+		label:  "Loading...",
+		frames: SpinnerPatternDefault,
+		theme:  ThemeDefault,
 	}
 }
 
-func (s *Spinner) WithLabelText(txt string) *Spinner  { s.labelText = txt; return s }
-func (s *Spinner) WithHelperText(txt string) *Spinner { s.helperText = txt; return s }
-func (s *Spinner) WithFrames(f []string) *Spinner     { s.frames = f; return s }
-func (s *Spinner) WithTheme(t Theme) *Spinner         { s.theme = t; return s }
+func (s *Spinner) WithTheme(t Theme) *Spinner     { s.theme = t; return s }
+func (s *Spinner) WithFrames(f []string) *Spinner { s.frames = f; return s }
+func (s *Spinner) WithLabel(txt string) *Spinner  { s.label = txt; return s }
+func (s *Spinner) WithHelp(txt string) *Spinner   { s.help = txt; return s }
 
-// Renderer(s) ------------------------------------
+// Presentation --------------------------------------------
 func (s *Spinner) Start() {
-	saveCursor()
-	hideCursor()
-	os.Stdout.Write([]byte("\r\n")) // clear line
+	// Save cursor state before prompt & defer reset
+	os.Stdout.WriteString(ansiSaveCursor + ansiHideCursor + ansiClearLineEnd + "\n\r")
 
-	// Print the helper + label
-	if s.helperText != "" {
-		os.Stdout.WriteString(s.theme.MutedStyle(s.helperText) + "\n")
+	// Print the helper line (no need to redraw on updates)
+	if s.help != "" {
+		os.Stdout.WriteString(s.theme.MutedStyle(s.help) + "\n")
 	}
 
-	// watch for Ctrl+C and set stop flag
+	// Watch for Ctrl+C and set stop flag
 	sigCh := make(chan os.Signal, 1)
 	signal.Notify(sigCh, os.Interrupt, syscall.SIGTERM)
 	go func() {
@@ -61,19 +60,15 @@ func (s *Spinner) Start() {
 	}()
 
 	s.wg.Go(func() {
+		defer os.Stdout.WriteString(ansiRestoreCursor + ansiClearScreenEnd + ansiReset + ansiShowCursor)
 		i := 0
 		for !s.stop {
-			thisFrame := s.frames[i%len(s.frames)]
-			os.Stdout.Write([]byte(s.theme.SecondaryStyle(thisFrame)))
-			os.Stdout.Write([]byte(s.theme.PrimaryStyle(s.labelText)))
-			os.Stdout.Write([]byte("\r"))
-			time.Sleep(250 * time.Millisecond)
+			currFrame := s.frames[i%len(s.frames)]
+			os.Stdout.WriteString(s.theme.PrimaryStyle(currFrame))
+			os.Stdout.WriteString(s.theme.SecondaryStyle(s.label) + ansiClearLineEnd + "\r")
 			i++
+			time.Sleep(200 * time.Millisecond)
 		}
-		// always cleanup here
-		restoreCursor()
-		clearTillEnd()
-		showCursor()
 	})
 }
 

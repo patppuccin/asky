@@ -47,9 +47,9 @@ func (si *SecureInput) WithValidator(fn func(string) (string, bool)) *SecureInpu
 // Presentation --------------------------------------------
 func (si *SecureInput) Render() (string, error) {
 
-	var inBuf []rune // Input buffer to store user input
-	cursorPos := 0   // Cursor position
-	saveCursor()     // Save cursor state before prompt
+	var inBuf []rune                      // Input buffer to store user input
+	cursorPos := 0                        // Cursor position
+	os.Stdout.WriteString(ansiSaveCursor) // Save cursor state before prompt
 
 	// Help line construction
 	helpLine := ""
@@ -71,7 +71,7 @@ func (si *SecureInput) Render() (string, error) {
 
 	// Prompt Redraw Renderer
 	redraw := func(input []rune, cursor int, validationMsg string, ok *bool) {
-		restoreCursor()
+		os.Stdout.WriteString(ansiRestoreCursor)
 		os.Stdout.WriteString("\n")
 		if si.validator != nil && validationMsg != "" {
 			if ok != nil && !*ok {
@@ -79,14 +79,14 @@ func (si *SecureInput) Render() (string, error) {
 			} else {
 				os.Stdout.WriteString(si.theme.SuccessStyle(validationMsg))
 			}
-			clearLineTillEnd()
+			os.Stdout.WriteString(ansiClearLineEnd)
 			os.Stdout.WriteString("\n\r")
 		}
 
 		os.Stdout.WriteString(helpLine + "\n\r")
 		os.Stdout.WriteString(promptLine)
 		os.Stdout.WriteString(strings.Repeat("*", len(input)))
-		clearLineTillEnd()
+		os.Stdout.WriteString(ansiClearLineEnd)
 		if cursor < len(input) {
 			cursorMoveLeft(len(input) - cursor)
 		}
@@ -138,8 +138,7 @@ func (si *SecureInput) Render() (string, error) {
 		return false, nil
 	})
 
-	restoreCursor()
-	clearTillEnd()
+	os.Stdout.WriteString(ansiRestoreCursor + ansiClearScreenEnd + ansiReset + ansiShowCursor)
 	if err != nil {
 		return "", err
 	}

@@ -57,7 +57,7 @@ func (c *Confirm) WithDefaultOption(val bool) *Confirm {
 }
 
 func (c *Confirm) Render() (bool, error) {
-	os.Stdout.Write([]byte("\r\033[s"))
+	os.Stdout.WriteString(ansiSaveCursor)
 
 	// Helper + default
 	os.Stdout.WriteString("\r\n")
@@ -79,6 +79,7 @@ func (c *Confirm) Render() (bool, error) {
 		os.Stdout.Write([]byte("\n"))
 	}
 	// Show prompt
+	os.Stdout.WriteString("\r")
 	os.Stdout.WriteString(c.theme.SecondaryStyle(c.promptSymbol))
 	os.Stdout.WriteString(c.theme.PrimaryStyle(c.promptText))
 	os.Stdout.WriteString(c.theme.AccentStyle(" ["))

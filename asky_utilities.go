@@ -18,12 +18,16 @@ var ErrNoOptions = errors.New("no options available")
 var ErrTerminalTooSmall = errors.New("terminal dimensions too small")
 
 // ANSI Escape Functions -----------------------------------
-func hideCursor()       { os.Stdout.Write([]byte("\033[?25l")) }
-func showCursor()       { os.Stdout.Write([]byte("\033[?25h")) }
-func saveCursor()       { os.Stdout.Write([]byte("\033[s")) }
-func restoreCursor()    { os.Stdout.Write([]byte("\033[u")) }
-func clearLineTillEnd() { os.Stdout.Write([]byte("\033[K")) }
-func clearTillEnd()     { os.Stdout.Write([]byte("\033[J")) }
+const (
+	ansiHideCursor     = "\033[?25l"
+	ansiShowCursor     = "\033[?25h"
+	ansiSaveCursor     = "\033[s"
+	ansiRestoreCursor  = "\033[u"
+	ansiReset          = "\033[0m"
+	ansiClearLineEnd   = "\033[K"
+	ansiClearScreenEnd = "\033[J"
+)
+
 func cursorMoveLeft(n int) {
 	if n > 0 {
 		os.Stdout.Write([]byte("\033[" + strconv.Itoa(n) + "D"))

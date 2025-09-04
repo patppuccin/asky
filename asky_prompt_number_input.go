@@ -50,9 +50,9 @@ func (ni *NumberInput) WithValidator(fn func(string) (string, bool)) *NumberInpu
 // Presentation --------------------------------------------
 func (ni *NumberInput) Render() (string, error) {
 
-	var inBuf []rune // Input buffer to store user input
-	cursorPos := 0   // Cursor position
-	saveCursor()     // Save cursor state before prompt
+	var inBuf []rune                      // Input buffer to store user input
+	cursorPos := 0                        // Cursor position
+	os.Stdout.WriteString(ansiSaveCursor) // Save cursor state before prompt
 
 	// Help line construction
 	helpLine := ""
@@ -78,7 +78,7 @@ func (ni *NumberInput) Render() (string, error) {
 
 	// Prompt Redraw Renderer
 	redraw := func(input []rune, cursor int, validationMsg string, ok *bool) {
-		restoreCursor()
+		os.Stdout.WriteString(ansiRestoreCursor)
 		os.Stdout.WriteString("\n")
 		if ni.validator != nil && validationMsg != "" {
 			if ok != nil && !*ok {
@@ -86,14 +86,14 @@ func (ni *NumberInput) Render() (string, error) {
 			} else {
 				os.Stdout.WriteString(ni.theme.SuccessStyle(validationMsg))
 			}
-			clearLineTillEnd()
+			os.Stdout.WriteString(ansiClearLineEnd)
 			os.Stdout.WriteString("\n\r")
 		}
 
 		os.Stdout.WriteString(helpLine + "\n\r")
 		os.Stdout.WriteString(promptLine)
 		os.Stdout.WriteString(string(input))
-		clearLineTillEnd()
+		os.Stdout.WriteString(ansiClearLineEnd)
 		if cursor < len(input) {
 			cursorMoveLeft(len(input) - cursor)
 		}
@@ -148,8 +148,7 @@ func (ni *NumberInput) Render() (string, error) {
 		return false, nil
 	})
 
-	restoreCursor()
-	clearTillEnd()
+	os.Stdout.WriteString(ansiRestoreCursor + ansiClearScreenEnd + ansiReset + ansiShowCursor)
 	if err != nil {
 		return "", err
 	}

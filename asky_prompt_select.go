@@ -17,6 +17,7 @@ type SingleSelect struct {
 	choiceOptional  bool
 	cursorIndicator string
 	selectionMarker string
+	disabledMarker  string
 	pageSize        int
 	selectedChoice  Choice
 }

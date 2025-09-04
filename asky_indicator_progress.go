@@ -20,27 +20,27 @@ type ProgressPattern struct {
 
 // Some built-in patterns
 var ProgressPatternDefault = ProgressPattern{
-	DoneChar:    "=",
-	PendingChar: " ",
-	BarPadLeft:  " [",
-	BarPadRight: "] ",
-}
-
-var ProgressPatternMathSymbols = ProgressPattern{
 	DoneChar:    "+",
 	PendingChar: "-",
 	BarPadLeft:  " [",
 	BarPadRight: "] ",
 }
 
-var ProgressPatternBars = ProgressPattern{
+var ProgressPatternSharp = ProgressPattern{
+	DoneChar:    "#",
+	PendingChar: "=",
+	BarPadLeft:  " [",
+	BarPadRight: "] ",
+}
+
+var ProgressPatternPipes = ProgressPattern{
 	DoneChar:    "|",
 	PendingChar: " ",
 	BarPadLeft:  " ",
 	BarPadRight: " ",
 }
 
-var ProgressPatternBlocks = ProgressPattern{
+var ProgressPatternSolid = ProgressPattern{
 	DoneChar:    "█",
 	PendingChar: " ",
 	BarPadLeft:  " ",
@@ -49,14 +49,14 @@ var ProgressPatternBlocks = ProgressPattern{
 
 // Progress holds state for an animated progress bar
 type Progress struct {
-	progressSymbol string
-	progressText   string
-	helperText     string
-	totalSteps     int
-	currentStep    int
-	barWidth       int
-	theme          Theme
-	pattern        ProgressPattern
+	prefix   string
+	label    string
+	help     string
+	steps    int
+	current  int
+	barWidth int
+	theme    Theme
+	pattern  ProgressPattern
 
 	stop bool
 	wg   sync.WaitGroup
@@ -66,47 +66,71 @@ type Progress struct {
 // Constructor with defaults
 func NewProgress() *Progress {
 	return &Progress{
-		progressSymbol: "[~] ",
-		progressText:   "Working...",
-		totalSteps:     100,
-		currentStep:    0,
-		barWidth:       40,
-		theme:          ThemeDefault,
-		pattern:        ProgressPatternDefault,
+		theme:    ThemeDefault,
+		prefix:   "[~] ",
+		label:    "Working...",
+		help:     "",
+		steps:    100,
+		current:  0,
+		barWidth: 30,
+		pattern:  ProgressPatternDefault,
 	}
 }
 
 // Fluent config
-func (p *Progress) WithProgressSymbol(s string) *Progress { p.progressSymbol = s; return p }
-func (p *Progress) WithWidth(w int) *Progress {
-	if w >= 0 {
-		p.barWidth = w
-	}
-	return p
-}
-func (p *Progress) WithPattern(x ProgressPattern) *Progress { p.pattern = x; return p }
 func (p *Progress) WithTheme(h Theme) *Progress             { p.theme = h; return p }
-func (p *Progress) WithProgressText(t string) *Progress     { p.progressText = t; return p }
-func (p *Progress) WithHelperText(t string) *Progress       { p.helperText = t; return p }
-func (p *Progress) WithTotalSteps(t int) *Progress {
-	if t > 0 {
-		p.totalSteps = t
-	}
-	return p
-}
+func (p *Progress) WithPrefix(s string) *Progress           { p.prefix = s; return p }
+func (p *Progress) WithWidth(w int) *Progress               { p.barWidth = max(0, w); return p }
+func (p *Progress) WithPattern(x ProgressPattern) *Progress { p.pattern = x; return p }
+func (p *Progress) WithLabel(t string) *Progress            { p.label = t; return p }
+func (p *Progress) WithHelp(t string) *Progress             { p.help = t; return p }
+func (p *Progress) WithSteps(t int) *Progress               { p.steps = max(0, t); return p }
 
 // Start begins the render loop
 func (p *Progress) Start() {
-	p.stop = false
-	os.Stdout.Write([]byte("\033[s"))    // save cursor
-	os.Stdout.Write([]byte("\033[?25l")) // hide cursor
-	os.Stdout.Write([]byte("\r\n"))      // clear line
 
-	if p.helperText != "" {
-		os.Stdout.WriteString(p.theme.MutedStyle(p.helperText) + "\n")
+	// Save cursor state before prompt & defer reset
+	p.stop = false
+	os.Stdout.WriteString(ansiSaveCursor + ansiHideCursor + ansiClearLineEnd + "\n\r")
+
+	// Print the helper line (no need to redraw on updates)
+	if p.help != "" {
+		os.Stdout.WriteString(p.theme.MutedStyle(p.help) + "\n")
 	}
 
-	// handle Ctrl+C
+	// Helper: Redraw the progress bar with current state
+	redraw := func() {
+		p.mu.Lock()
+		defer p.mu.Unlock()
+
+		ratio := float64(p.current) / float64(p.steps)
+		if ratio < 0 {
+			ratio = 0
+		}
+		if ratio > 1 {
+			ratio = 1
+		}
+
+		filled := int(ratio * float64(p.barWidth))
+		filled = min(filled, p.barWidth)
+		pending := p.barWidth - filled
+
+		bar := strings.Repeat(p.pattern.DoneChar, filled) +
+			strings.Repeat(p.pattern.PendingChar, pending)
+
+		percent := strconv.Itoa(int(ratio * 100))
+		for len(percent) < 3 {
+			percent = " " + percent
+		}
+		percent += "% "
+
+		os.Stdout.WriteString(p.theme.PrimaryStyle(p.prefix))
+		os.Stdout.WriteString(p.theme.SecondaryStyle(p.label))
+		os.Stdout.WriteString(p.theme.AccentStyle(p.pattern.BarPadLeft + bar + p.pattern.BarPadRight))
+		os.Stdout.WriteString(p.theme.SecondaryStyle(" " + percent + " " + ansiClearLineEnd + "\r"))
+	}
+
+	// Watch for Ctrl+C and set stop flag
 	sigCh := make(chan os.Signal, 1)
 	signal.Notify(sigCh, os.Interrupt, syscall.SIGTERM)
 	go func() {
@@ -115,13 +139,13 @@ func (p *Progress) Start() {
 		os.Exit(1)
 	}()
 
+	// Run the progress bar render loop until stop (completion or intterupt)
 	p.wg.Go(func() {
+		defer os.Stdout.WriteString(ansiRestoreCursor + ansiClearScreenEnd + ansiReset + ansiShowCursor)
 		for !p.stop {
-			p.renderOnce()
+			redraw()
 			time.Sleep(100 * time.Millisecond)
 		}
-		// final cleanup
-		os.Stdout.Write([]byte("\033[u\033[J\033[?25h"))
 	})
 }
 
@@ -135,49 +159,12 @@ func (p *Progress) Increment() {
 	p.mu.Lock()
 	defer p.mu.Unlock()
 
-	if p.totalSteps <= 0 {
+	if p.steps <= 0 {
 		return
 	}
 
-	p.currentStep++
-	if p.currentStep > p.totalSteps {
-		p.currentStep = p.totalSteps
+	p.current++
+	if p.current > p.steps {
+		p.current = p.steps
 	}
-}
-
-// internal renderer
-func (p *Progress) renderOnce() {
-	p.mu.Lock()
-	defer p.mu.Unlock()
-
-	ratio := float64(p.currentStep) / float64(p.totalSteps)
-	if ratio < 0 {
-		ratio = 0
-	}
-	if ratio > 1 {
-		ratio = 1
-	}
-
-	filled := int(ratio * float64(p.barWidth))
-	if filled > p.barWidth {
-		filled = p.barWidth
-	}
-	pending := p.barWidth - filled
-
-	bar := strings.Repeat(p.pattern.DoneChar, filled) +
-		strings.Repeat(p.pattern.PendingChar, pending)
-
-	percent := strconv.Itoa(int(ratio * 100))
-	for len(percent) < 3 {
-		percent = " " + percent
-	}
-	percent += "% "
-
-	os.Stdout.Write([]byte("\r")) // restore cursor + clear line
-	os.Stdout.WriteString(p.theme.SecondaryStyle(p.progressSymbol))
-	os.Stdout.WriteString(p.theme.PrimaryStyle(p.progressText))
-	os.Stdout.WriteString(p.theme.AccentStyle(p.pattern.BarPadLeft))
-	os.Stdout.WriteString(p.theme.AccentStyle(bar))
-	os.Stdout.WriteString(p.theme.AccentStyle(p.pattern.BarPadRight))
-	os.Stdout.WriteString(p.theme.SecondaryStyle(" " + percent + " "))
 }

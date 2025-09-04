@@ -21,6 +21,7 @@ func NewSingleSelect() *SingleSelect {
 		choices:         []Choice{},
 		cursorIndicator: " * ",
 		selectionMarker: " + ",
+		disabledMarker:  " x ",
 		pageSize:        10,
 	}
 }
@@ -42,39 +43,42 @@ func (ss *SingleSelect) WithSelectionMarker(mrk string) *SingleSelect {
 	ss.selectionMarker = mrk
 	return ss
 }
+func (ss *SingleSelect) WithDisabledMarker(mrk string) *SingleSelect {
+	ss.disabledMarker = mrk
+	return ss
+}
 
 // Presentation --------------------------------------------
 func (ss *SingleSelect) Render() (Choice, error) {
 
-	// Sanity check to prevent no choices rendering
+	// Sanity check for no choices
 	if len(ss.choices) == 0 {
 		return Choice{}, ErrNoOptions
 	}
 
-	searchQuery := ""
-	searchMode := false
-	filteredChoices := ss.choices
-	pageSize := min(ss.pageSize, len(filteredChoices))
-
-	cursorIdx := 0                                // Cursor index (defaults to the first option)
-	startIdx := 0                                 // Start index of the visible options
-	endIdx := min(len(filteredChoices), pageSize) // End index of the visible options
-
-	// Hide & save cursor before prompt
-	hideCursor()
-	saveCursor()
+	// State variables for this render cycle
+	interrupted := false                               // true if user aborted (Ctrl+C)
+	searchQuery := ""                                  // current search text
+	searchMode := false                                // whether search mode is active
+	filteredChoices := ss.choices                      // visible choices after filtering
+	pageSize := min(ss.pageSize, len(filteredChoices)) // items per page
+	cursorIdx := 0                                     // index of the highlighted choice
+	startIdx := 0                                      // index of first visible choice
+	endIdx := min(len(filteredChoices), pageSize)      // index after last visible choice
 
 	// Line constructors
-	helpLine := ss.theme.MutedStyle(ss.help) // + "th: " + strconv.Itoa(h)
+	helpLine := ss.theme.MutedStyle(ss.help)
 	promptLine := ss.theme.SecondaryStyle(ss.prefix) + ss.theme.PrimaryStyle(ss.label+ss.separator)
 	searchLine := ss.theme.MutedStyle("Search: ")
-	infoLineNormalMode := ss.theme.MutedStyle("↑/↓ or j/k move . space select . enter confirm . TAB search")
-	infoLineSearchMode := ss.theme.MutedStyle("↑/↓ move . space select . enter confirm . type search . ESC/TAB nav")
+	infoLineNormalMode := ss.theme.MutedStyle("↑/↓ or j/k move . space select . enter confirm" + ansiClearLineEnd + "\n\rTAB search")
+	infoLineSearchMode := ss.theme.MutedStyle("↑/↓ move . space select . enter confirm" + ansiClearLineEnd + "\n\rType to search . ESC/TAB nav")
 
 	// Helper: Choice Renderer based on the state, selection & cursor
 	renderChoice := func(c Choice, cur, sel bool) string {
 		var choiceLine string
 		switch {
+		case c.Disabled:
+			choiceLine = ss.disabledMarker + c.Label
 		case sel:
 			choiceLine = ss.selectionMarker + c.Label
 		case cur:
@@ -162,7 +166,7 @@ func (ss *SingleSelect) Render() (Choice, error) {
 
 	// Helper: Redraw the prompt with the current state
 	redraw := func(cursor, start, end int) {
-		restoreCursor()
+		os.Stdout.WriteString(ansiRestoreCursor)
 		os.Stdout.WriteString("\n")
 		if ss.help != "" {
 			os.Stdout.WriteString(helpLine + "\n")
@@ -175,7 +179,7 @@ func (ss *SingleSelect) Render() (Choice, error) {
 			searchLine += ss.theme.AccentStyle(" ◂ " + strconv.Itoa(len(filteredChoices)) + " hits") // Visual indicator for search mode
 		}
 		os.Stdout.WriteString("\r" + searchLine)
-		clearLineTillEnd()
+		os.Stdout.WriteString(ansiClearLineEnd)
 		os.Stdout.WriteString("\n")
 
 		// Redraw options
@@ -183,26 +187,30 @@ func (ss *SingleSelect) Render() (Choice, error) {
 			c := filteredChoices[i]
 			cur := i == cursor
 			sel := c.Value == ss.selectedChoice.Value
-			os.Stdout.WriteString("\r" + renderChoice(c, cur, sel))
-			clearLineTillEnd()
-			os.Stdout.WriteString("\n")
+			os.Stdout.WriteString("\r" + renderChoice(c, cur, sel) + ansiClearLineEnd + "\n")
 		}
 
-		// Clear any remaining lines
+		// Clear any remaining lines (move to start, clear contents, next line)
 		for i := end - start; i < pageSize; i++ {
-			os.Stdout.WriteString("\r") // Move to beginning of line
-			clearLineTillEnd()          // Clear the line
-			os.Stdout.WriteString("\n") // Move to next line
+			os.Stdout.WriteString("\r" + ansiClearLineEnd + "\n")
 		}
 
 		// Show appropriate info line
 		if searchMode {
-			os.Stdout.WriteString("\n\r" + infoLineSearchMode)
+			os.Stdout.WriteString(ansiClearLineEnd + "\n\r" + infoLineSearchMode + ansiClearLineEnd)
 		} else {
-			os.Stdout.WriteString("\n\r" + infoLineNormalMode)
+			os.Stdout.WriteString(ansiClearLineEnd + "\n\r" + infoLineNormalMode + ansiClearLineEnd)
 		}
-		clearLineTillEnd()
 	}
+
+	// Helper: Reset cursor after prompt render
+	resetState := func() {
+		os.Stdout.WriteString(ansiRestoreCursor + ansiClearScreenEnd + ansiReset + ansiShowCursor)
+	}
+
+	// Save state before prompt & defer reset
+	os.Stdout.WriteString(ansiHideCursor + ansiSaveCursor)
+	defer resetState()
 
 	// Initialize the selected choice with the default choice
 	if ss.defaultChoice >= 0 && ss.defaultChoice < len(ss.choices) {
@@ -234,7 +242,8 @@ func (ss *SingleSelect) Render() (Choice, error) {
 		case keys.Tab:
 			searchMode = !searchMode
 		case keys.CtrlC:
-			return true, ErrInterrupted
+			interrupted = true
+			return true, nil
 		case keys.Escape:
 			if searchMode {
 				searchMode = false // In search mode, ESC exits search mode
@@ -274,14 +283,10 @@ func (ss *SingleSelect) Render() (Choice, error) {
 			} else {
 				// In nav mode, handle vi-style navigation
 				switch key.Runes[0] {
-				case 'j':
+				case 'j', 'l':
 					navigateDown()
-				case 'k':
+				case 'k', 'h':
 					navigateUp()
-				case 'h':
-					navigateUp()
-				case 'l':
-					navigateDown()
 				}
 			}
 		}
@@ -292,15 +297,14 @@ func (ss *SingleSelect) Render() (Choice, error) {
 
 	// Handle errors
 	if err != nil {
-		restoreCursor()
-		clearTillEnd()
-		showCursor()
 		return Choice{}, err
 	}
 
+	// Handle interrupts
+	if interrupted {
+		return Choice{}, ErrInterrupted
+	}
+
 	// Restore state & return the selected choice
-	restoreCursor()
-	clearTillEnd()
-	showCursor()
 	return ss.selectedChoice, nil
 }
