@@ -95,6 +95,13 @@ func main() {
 
 	askyTheme := asky.ThemeCatppuccinMocha
 
+	asky.NewStatus().WithLabel("Welcome to Asky").WithLevel(asky.StatusLevelDefault).Render()
+	asky.NewStatus().WithLabel("This is a success message").WithLevel(asky.StatusLevelSuccess).Render()
+	asky.NewStatus().WithLabel("This is a debug message").WithLevel(asky.StatusLevelDebug).Render()
+	asky.NewStatus().WithLabel("This is a status message").WithLevel(asky.StatusLevelInfo).Render()
+	asky.NewStatus().WithLabel("This is a warning message").WithLevel(asky.StatusLevelWarn).Render()
+	asky.NewStatus().WithLabel("This is an error message").WithLevel(asky.StatusLevelError).Render()
+
 	pb2 := asky.NewProgress().
 		WithWidth(30).
 		WithPattern(asky.ProgressPatternDefault).
