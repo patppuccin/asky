@@ -5,287 +5,395 @@ import (
 	"strings"
 )
 
-type Style struct {
-	Fg            string
-	Bg            string
-	Dim           bool
-	Bold          bool
-	Italic        bool
-	Underline     bool
-	Strikethrough bool
-}
+// --- Color Definition -----------------------------------
+type color string
 
-// --- Positive Style Builders -----------------------------
-func (st Style) WithFgHEX(hex string) Style {
-	r, g, b := hexParse(hex)
-	st.Fg = "38;2;" + strconv.Itoa(r) + ";" + strconv.Itoa(g) + ";" + strconv.Itoa(b)
-	return st
-}
-
-func (st Style) WithBgHEX(hex string) Style {
-	r, g, b := hexParse(hex)
-	st.Bg = "48;2;" + strconv.Itoa(r) + ";" + strconv.Itoa(g) + ";" + strconv.Itoa(b)
-	return st
-}
-
-func (st Style) WithFgRGB(r, g, b int) Style {
-	st.Fg = "38;2;" + strconv.Itoa(r) + ";" + strconv.Itoa(g) + ";" + strconv.Itoa(b)
-	return st
-}
-
-func (st Style) WithBgRGB(r, g, b int) Style {
-	st.Bg = "48;2;" + strconv.Itoa(r) + ";" + strconv.Itoa(g) + ";" + strconv.Itoa(b)
-	return st
-}
-
-func (st Style) WithFgANSI(base int) Style {
-	st.Fg = strconv.Itoa(base) // directly assigns 30–37 or 90–97
-	return st
-}
-
-func (st Style) WithBgANSI(code int) Style {
-	st.Bg = strconv.Itoa(code) // directly assigns 40–47 or 100–107
-	return st
-}
-
-func (st Style) WithDim() Style           { st.Dim = true; return st }
-func (st Style) WithBold() Style          { st.Bold = true; return st }
-func (st Style) WithItalic() Style        { st.Italic = true; return st }
-func (st Style) WithUnderline() Style     { st.Underline = true; return st }
-func (st Style) WithStrikethrough() Style { st.Strikethrough = true; return st }
-
-// --- Negative Style Builders -----------------------------
-func (st Style) WithoutFGColor() Style       { st.Fg = ""; return st }
-func (st Style) WithoutBGColor() Style       { st.Bg = ""; return st }
-func (st Style) WithoutDim() Style           { st.Dim = false; return st }
-func (st Style) WithoutBold() Style          { st.Bold = false; return st }
-func (st Style) WithoutItalic() Style        { st.Italic = false; return st }
-func (st Style) WithoutUnderline() Style     { st.Underline = false; return st }
-func (st Style) WithoutStrikethrough() Style { st.Strikethrough = false; return st }
-
-func hexParse(hx string) (int, int, int) {
-	hx = strings.TrimPrefix(hx, "#")
+func ColorFromHex(hx string) color {
+	hx = strings.TrimPrefix(strings.TrimSpace(hx), "#")
 	if len(hx) != 6 {
-		return 0, 0, 0
-	}
-	r, _ := strconv.ParseUint(hx[0:2], 16, 8)
-	g, _ := strconv.ParseUint(hx[2:4], 16, 8)
-	b, _ := strconv.ParseUint(hx[4:6], 16, 8)
-	return int(r), int(g), int(b)
-}
-
-// --- Styled Printer --------------------------------------
-func (st Style) Sprint(s string) string {
-	if s == "" {
 		return ""
 	}
+	var result strings.Builder
+	result.WriteString("rgb:")
+	for i := 0; i < 6; i += 2 {
+		val, err := strconv.ParseUint(hx[i:i+2], 16, 8)
+		if err != nil {
+			return ""
+		}
+		if i > 0 {
+			result.WriteString(",")
+		}
+		result.WriteString(strconv.Itoa(int(val)))
+	}
+	return color(result.String())
+}
+func ColorFromRGB(r, g, b int) color {
+	if r < 0 || r > 255 || g < 0 || g > 255 || b < 0 || b > 255 {
+		return ""
+	}
+	return color("rgb:" +
+		strconv.Itoa(r) + "," +
+		strconv.Itoa(g) + "," +
+		strconv.Itoa(b))
+}
+func ColorFromANSI(i int) color {
+	if i < 0 || i > 255 {
+		return ""
+	}
+	return color("ansi:" + strconv.Itoa(i))
+}
 
-	// quick exit: no styling at all
-	if !st.Bold && !st.Dim && !st.Italic &&
-		!st.Underline && !st.Strikethrough &&
-		st.Fg == "" && st.Bg == "" {
-		return s
+// --- Style Definition -----------------------------------
+type style struct {
+	fg, bg                   color
+	dim, bold, italic        bool
+	underline, strikethrough bool
+}
+
+func NewStyle() *style { return &style{} }
+
+func (st *style) FG(c color) *style     { st.fg = c; return st }
+func (st *style) BG(c color) *style     { st.bg = c; return st }
+func (st *style) Dim() *style           { st.dim = true; return st }
+func (st *style) Bold() *style          { st.bold = true; return st }
+func (st *style) Italic() *style        { st.italic = true; return st }
+func (st *style) Underline() *style     { st.underline = true; return st }
+func (st *style) Strikethrough() *style { st.strikethrough = true; return st }
+func (st *style) isEmpty() bool {
+	return !st.bold && !st.dim && !st.italic &&
+		!st.underline && !st.strikethrough &&
+		st.fg == "" && st.bg == ""
+}
+func (st *style) parseColor(repr string, bg bool) (string, bool) {
+	if repr == "" {
+		return "", false
+	}
+	// rgb:r,g,b
+	if strings.HasPrefix(repr, "rgb:") {
+		s := repr[4:] // after "rgb:"
+		// find two commas in one pass
+		c1, c2 := -1, -1
+		for i := 0; i < len(s); i++ {
+			if s[i] == ',' {
+				if c1 == -1 {
+					c1 = i
+				} else {
+					c2 = i
+					break
+				}
+			}
+		}
+		if c1 == -1 || c2 == -1 {
+			return "", false
+		}
+		r := s[:c1]
+		g := s[c1+1 : c2]
+		b := s[c2+1:]
+		if bg {
+			return "48;2;" + r + ";" + g + ";" + b, true
+		}
+		return "38;2;" + r + ";" + g + ";" + b, true
 	}
 
-	var codes []string
+	// ansi:n
+	if strings.HasPrefix(repr, "ansi:") {
+		n := repr[5:]
+		if n == "" {
+			return "", false
+		}
+		if bg {
+			return "48;5;" + n, true
+		}
+		return "38;5;" + n, true
+	}
+	return "", false
+}
+func (st *style) Sprint(text string) string {
 
-	// text attributes
-	if st.Bold {
-		codes = append(codes, "1")
-	}
-	if st.Dim {
-		codes = append(codes, "2")
-	}
-	if st.Italic {
-		codes = append(codes, "3")
-	}
-	if st.Underline {
-		codes = append(codes, "4")
-	}
-	if st.Strikethrough {
-		codes = append(codes, "9")
-	}
-
-	// colors (already prebuilt by builders)
-	if st.Fg != "" {
-		codes = append(codes, st.Fg)
-	}
-	if st.Bg != "" {
-		codes = append(codes, st.Bg)
+	if text == "" || st.isEmpty() {
+		return text
 	}
 
+	// Build the escape sequence
 	var b strings.Builder
-	b.Grow(10*len(codes) + len(s) + 4) // allocate once
+	b.Grow(len(text) + 24)
 	b.WriteString("\x1b[")
-	b.WriteString(strings.Join(codes, ";"))
-	b.WriteString("m")
-	b.WriteString(s)
-	b.WriteString("\x1b[0m")
 
+	first := true // flag to check code presence
+	write := func(code string) {
+		if code == "" {
+			return
+		}
+		if !first {
+			b.WriteByte(';')
+		}
+		first = false
+		b.WriteString(code)
+	}
+
+	if st.bold {
+		write("1")
+	}
+	if st.dim {
+		write("2")
+	}
+	if st.italic {
+		write("3")
+	}
+	if st.underline {
+		write("4")
+	}
+	if st.strikethrough {
+		write("9")
+	}
+	if code, ok := st.parseColor(string(st.fg), false); ok {
+		write(code)
+	}
+	if code, ok := st.parseColor(string(st.bg), true); ok {
+		write(code)
+	}
+	if first {
+		return text
+	}
+
+	b.WriteString("m")
+	b.WriteString(text)
+	b.WriteString("\x1b[0m")
 	return b.String()
 }
 
+// --- Style Presets --------------------------------------
+type preset struct {
+	theme     *Theme
+	success   *style
+	debug     *style
+	info      *style
+	warn      *style
+	err       *style
+	neutral   *style
+	muted     *style
+	disabled  *style
+	primary   *style
+	secondary *style
+	accent    *style
+	highlight *style
+}
+
+func newPreset(theme Theme) *preset {
+	return &preset{
+		theme:     &theme,
+		success:   NewStyle().FG(theme.Green).Bold(),
+		debug:     NewStyle().FG(theme.Muted).Bold(),
+		info:      NewStyle().FG(theme.Blue).Bold(),
+		warn:      NewStyle().FG(theme.Yellow).Bold(),
+		err:       NewStyle().FG(theme.Red).Bold(),
+		neutral:   NewStyle().FG(theme.Foreground),
+		muted:     NewStyle().FG(theme.Muted),
+		disabled:  NewStyle().FG(theme.Foreground).Dim().Strikethrough(),
+		highlight: NewStyle().FG(theme.Background).BG(theme.Highlight).Bold(),
+		primary:   NewStyle().FG(theme.Primary),
+		secondary: NewStyle().FG(theme.Secondary),
+		accent:    NewStyle().FG(theme.Accent),
+	}
+}
+
+// --- Theme Definition -----------------------------------
 type Theme struct {
-	Primary   Style
-	Secondary Style
-	Accent    Style
-	Neutral   Style
-	Muted     Style
-	Success   Style
-	Info      Style
-	Warning   Style
-	Error     Style
-	Disabled  Style
-	Emphasis  Style
-	Outline   Style
+	Background    color
+	BackgroundAlt color
+	Foreground    color
+	ForegroundAlt color
+	Highlight     color
+	Cursor        color
+	Muted         color
+	Outline       color
+	Red           color
+	Yellow        color
+	Green         color
+	Blue          color
+	Teal          color
+	Primary       color
+	Secondary     color
+	Accent        color
 }
 
-func (t Theme) PrimaryStyle(s string) string   { return t.Primary.Sprint(s) }
-func (t Theme) SecondaryStyle(s string) string { return t.Secondary.Sprint(s) }
-func (t Theme) AccentStyle(s string) string    { return t.Accent.Sprint(s) }
-func (t Theme) NeutralStyle(s string) string   { return t.Neutral.Sprint(s) }
-func (t Theme) MutedStyle(s string) string     { return t.Muted.Sprint(s) }
-func (t Theme) SuccessStyle(s string) string   { return t.Success.Sprint(s) }
-func (t Theme) InfoStyle(s string) string      { return t.Info.Sprint(s) }
-func (t Theme) WarningStyle(s string) string   { return t.Warning.Sprint(s) }
-func (t Theme) ErrorStyle(s string) string     { return t.Error.Sprint(s) }
-func (t Theme) DisabledStyle(s string) string  { return t.Disabled.Sprint(s) }
-func (t Theme) EmphasisStyle(s string) string  { return t.Emphasis.Sprint(s) }
-func (t Theme) OutlineStyle(s string) string   { return t.Outline.Sprint(s) }
+// --- Theme Presets --------------------------------------
 
-// Color Themes for the library -------------------------
-
+// Default ANSI (light & dark)
 var ThemeDefault = Theme{
-	Primary:   (Style{}).WithFgANSI(35),                 // magenta
-	Secondary: (Style{}).WithFgANSI(34),                 // blue
-	Accent:    (Style{}).WithFgANSI(36),                 // cyan
-	Neutral:   (Style{}).WithFgANSI(37),                 // white
-	Muted:     (Style{}).WithFgANSI(90),                 // bright black (gray)
-	Success:   (Style{}).WithFgANSI(32),                 // green
-	Info:      (Style{}).WithFgANSI(36),                 // cyan
-	Warning:   (Style{}).WithFgANSI(33),                 // yellow
-	Error:     (Style{}).WithFgANSI(31),                 // red
-	Disabled:  (Style{}).WithFgANSI(90).WithDim(),       // gray dim
-	Emphasis:  (Style{}).WithFgANSI(35).WithUnderline(), // magenta underline
-	Outline:   (Style{}).WithFgANSI(90),                 // gray border
+	Background:    ColorFromANSI(0),  // black
+	BackgroundAlt: ColorFromANSI(8),  // bright black (gray)
+	Foreground:    ColorFromANSI(15), // bright white
+	ForegroundAlt: ColorFromANSI(7),  // white
+	Highlight:     ColorFromANSI(8),  // bright black (as bg highlight)
+	Cursor:        ColorFromANSI(15), // bright white
+	Muted:         ColorFromANSI(8),  // bright black
+	Outline:       ColorFromANSI(8),  // bright black
+	Red:           ColorFromANSI(9),  // bright red
+	Yellow:        ColorFromANSI(11), // bright yellow
+	Green:         ColorFromANSI(10), // bright green
+	Blue:          ColorFromANSI(12), // bright blue
+	Teal:          ColorFromANSI(14), // bright cyan
+	Primary:       ColorFromANSI(5),  // magenta
+	Secondary:     ColorFromANSI(13), // bright magenta
+	Accent:        ColorFromANSI(3),  // yellow (closest to Accent in ANSI)
 }
 
+// Catppuccin Mocha (dark)
 var ThemeCatppuccinMocha = Theme{
-	Primary:   (Style{}).WithFgHEX("#cba6f7"),                               // Catppuccin Mocha Mauve
-	Secondary: (Style{}).WithFgHEX("#89b4fa"),                               // Blue
-	Accent:    (Style{}).WithFgHEX("#94e2d5"),                               // Teal
-	Neutral:   (Style{}).WithFgHEX("#cdd6f4"),                               // Text
-	Muted:     (Style{}).WithFgHEX("#a6adc8"),                               // Subtext0
-	Success:   (Style{}).WithFgHEX("#a6e3a1"),                               // Green
-	Info:      (Style{}).WithFgHEX("#89dceb"),                               // Sky
-	Warning:   (Style{}).WithFgHEX("#f9e2af"),                               // Yellow
-	Error:     (Style{}).WithFgHEX("#f38ba8"),                               // Red
-	Disabled:  (Style{}).WithFgHEX("#585b70").WithDim().WithStrikethrough(), // Overlay0
-	Emphasis:  (Style{}).WithFgHEX("#b4befe").WithUnderline(),               // Lavender, underlined
-	Outline:   (Style{}).WithFgHEX("#6c7086"),                               // Overlay1, for borders
+	Background:    ColorFromHex("#1e1e2e"), // base
+	BackgroundAlt: ColorFromHex("#181825"), // mantle
+	Foreground:    ColorFromHex("#cdd6f4"), // text
+	ForegroundAlt: ColorFromHex("#bac2de"), // subtext1
+	Highlight:     ColorFromHex("#cba6f7"), // mauve (used sparingly)
+	Cursor:        ColorFromHex("#f5e0dc"), // rosewater
+	Muted:         ColorFromHex("#6c7086"), // overlay0
+	Outline:       ColorFromHex("#45475a"), // surface0
+	Red:           ColorFromHex("#f38ba8"), // red (error/danger)
+	Yellow:        ColorFromHex("#f9e2af"), // yellow (warning)
+	Green:         ColorFromHex("#a6e3a1"), // green (success)
+	Blue:          ColorFromHex("#89b4fa"), // blue (info)
+	Primary:       ColorFromHex("#cba6f7"), // mauve (primary brand/selection)
+	Secondary:     ColorFromHex("#f2cdcd"), // flamingo (secondary actions)
+	Accent:        ColorFromHex("#fab387"), // peach (highlighted actions/callouts)
 }
 
+// Gruvbox (dark)
 var ThemeGruvbox = Theme{
-	Primary:   (Style{}).WithFgHEX("#d3869b"),                               // mauve/pink
-	Secondary: (Style{}).WithFgHEX("#83a598"),                               // aqua
-	Accent:    (Style{}).WithFgHEX("#fabd2f"),                               // yellow
-	Neutral:   (Style{}).WithFgHEX("#ebdbb2"),                               // fg
-	Muted:     (Style{}).WithFgHEX("#a89984"),                               // gray
-	Success:   (Style{}).WithFgHEX("#b8bb26"),                               // green
-	Info:      (Style{}).WithFgHEX("#83a598"),                               // blue
-	Warning:   (Style{}).WithFgHEX("#fabd2f"),                               // yellow
-	Error:     (Style{}).WithFgHEX("#fb4934"),                               // red
-	Disabled:  (Style{}).WithFgHEX("#665c54").WithDim().WithStrikethrough(), // dark gray
-	Emphasis:  (Style{}).WithFgHEX("#d3869b").WithUnderline(),               // pink underlined
-	Outline:   (Style{}).WithFgHEX("#3c3836"),                               // bg2
+	Background:    ColorFromHex("#282828"),
+	BackgroundAlt: ColorFromHex("#3c3836"),
+	Foreground:    ColorFromHex("#ebdbb2"),
+	ForegroundAlt: ColorFromHex("#d5c4a1"),
+	Highlight:     ColorFromHex("#3c3836"),
+	Cursor:        ColorFromHex("#ebdbb2"),
+	Muted:         ColorFromHex("#a89984"),
+	Outline:       ColorFromHex("#504945"),
+	Red:           ColorFromHex("#fb4934"),
+	Yellow:        ColorFromHex("#fabd2f"),
+	Green:         ColorFromHex("#b8bb26"),
+	Blue:          ColorFromHex("#83a598"),
+	Teal:          ColorFromHex("#8ec07c"),
+	Primary:       ColorFromHex("#b16286"),
+	Secondary:     ColorFromHex("#d3869b"),
+	Accent:        ColorFromHex("#fe8019"),
 }
 
+// Kanagawa (dark)
 var ThemeKanagawa = Theme{
-	Primary:   (Style{}).WithFgHEX("#957fb8"),                               // purple
-	Secondary: (Style{}).WithFgHEX("#7e9cd8"),                               // blue
-	Accent:    (Style{}).WithFgHEX("#7aa89f"),                               // teal
-	Neutral:   (Style{}).WithFgHEX("#dcd7ba"),                               // fg
-	Muted:     (Style{}).WithFgHEX("#938aa9"),                               // muted purple-gray
-	Success:   (Style{}).WithFgHEX("#98bb6c"),                               // green
-	Info:      (Style{}).WithFgHEX("#7fb4ca"),                               // cyan
-	Warning:   (Style{}).WithFgHEX("#e6c384"),                               // yellow
-	Error:     (Style{}).WithFgHEX("#e46876"),                               // red
-	Disabled:  (Style{}).WithFgHEX("#727169").WithDim().WithStrikethrough(), // gray
-	Emphasis:  (Style{}).WithFgHEX("#957fb8").WithUnderline(),               // purple underline
-	Outline:   (Style{}).WithFgHEX("#54546d"),                               // bg edge
+	Background:    ColorFromHex("#1f1f28"),
+	BackgroundAlt: ColorFromHex("#2a2a37"),
+	Foreground:    ColorFromHex("#dcd7ba"),
+	ForegroundAlt: ColorFromHex("#c8c093"),
+	Highlight:     ColorFromHex("#2a2a37"),
+	Cursor:        ColorFromHex("#dcd7ba"),
+	Muted:         ColorFromHex("#727169"),
+	Outline:       ColorFromHex("#363646"),
+	Red:           ColorFromHex("#c34043"),
+	Yellow:        ColorFromHex("#c0a36e"),
+	Green:         ColorFromHex("#98bb6c"),
+	Blue:          ColorFromHex("#7e9cd8"),
+	Teal:          ColorFromHex("#6a9589"),
+	Primary:       ColorFromHex("#957fb8"),
+	Secondary:     ColorFromHex("#d27e99"),
+	Accent:        ColorFromHex("#ffa066"),
 }
 
+// Tokyo Night (dark)
 var ThemeTokyoNight = Theme{
-	Primary:   (Style{}).WithFgHEX("#bb9af7"),                               // purple
-	Secondary: (Style{}).WithFgHEX("#7aa2f7"),                               // blue
-	Accent:    (Style{}).WithFgHEX("#7dcfff"),                               // cyan
-	Neutral:   (Style{}).WithFgHEX("#c0caf5"),                               // fg
-	Muted:     (Style{}).WithFgHEX("#565f89"),                               // muted gray
-	Success:   (Style{}).WithFgHEX("#9ece6a"),                               // green
-	Info:      (Style{}).WithFgHEX("#2ac3de"),                               // aqua
-	Warning:   (Style{}).WithFgHEX("#e0af68"),                               // yellow
-	Error:     (Style{}).WithFgHEX("#f7768e"),                               // red
-	Disabled:  (Style{}).WithFgHEX("#414868").WithDim().WithStrikethrough(), // dark gray
-	Emphasis:  (Style{}).WithFgHEX("#bb9af7").WithUnderline(),               // purple underline
-	Outline:   (Style{}).WithFgHEX("#3b4261"),                               // border
+	Background:    ColorFromHex("#1a1b26"),
+	BackgroundAlt: ColorFromHex("#24283b"),
+	Foreground:    ColorFromHex("#c0caf5"),
+	ForegroundAlt: ColorFromHex("#a9b1d6"),
+	Highlight:     ColorFromHex("#2f334d"),
+	Cursor:        ColorFromHex("#c0caf5"),
+	Muted:         ColorFromHex("#565f89"),
+	Outline:       ColorFromHex("#2a2e3f"),
+	Red:           ColorFromHex("#f7768e"),
+	Yellow:        ColorFromHex("#e0af68"),
+	Green:         ColorFromHex("#9ece6a"),
+	Blue:          ColorFromHex("#7aa2f7"),
+	Teal:          ColorFromHex("#73daca"),
+	Primary:       ColorFromHex("#bb9af7"),
+	Secondary:     ColorFromHex("#ff7a93"),
+	Accent:        ColorFromHex("#ff9e64"),
 }
 
+// Dracula (dark)
 var ThemeDracula = Theme{
-	Primary:   (Style{}).WithFgHEX("#bd93f9"),                               // purple
-	Secondary: (Style{}).WithFgHEX("#8be9fd"),                               // cyan
-	Accent:    (Style{}).WithFgHEX("#ffb86c"),                               // orange
-	Neutral:   (Style{}).WithFgHEX("#f8f8f2"),                               // fg
-	Muted:     (Style{}).WithFgHEX("#6272a4"),                               // muted blue-gray
-	Success:   (Style{}).WithFgHEX("#50fa7b"),                               // green
-	Info:      (Style{}).WithFgHEX("#8be9fd"),                               // cyan
-	Warning:   (Style{}).WithFgHEX("#f1fa8c"),                               // yellow
-	Error:     (Style{}).WithFgHEX("#ff5555"),                               // red
-	Disabled:  (Style{}).WithFgHEX("#44475a").WithDim().WithStrikethrough(), // gray
-	Emphasis:  (Style{}).WithFgHEX("#bd93f9").WithUnderline(),               // purple underline
-	Outline:   (Style{}).WithFgHEX("#282a36"),                               // border
+	Background:    ColorFromHex("#282a36"),
+	BackgroundAlt: ColorFromHex("#44475a"),
+	Foreground:    ColorFromHex("#f8f8f2"),
+	ForegroundAlt: ColorFromHex("#e2e2dc"),
+	Highlight:     ColorFromHex("#44475a"),
+	Cursor:        ColorFromHex("#f8f8f2"),
+	Muted:         ColorFromHex("#6272a4"),
+	Outline:       ColorFromHex("#3a3d4a"),
+	Red:           ColorFromHex("#ff5555"),
+	Yellow:        ColorFromHex("#f1fa8c"),
+	Green:         ColorFromHex("#50fa7b"),
+	Blue:          ColorFromHex("#8be9fd"),
+	Teal:          ColorFromHex("#8be9fd"),
+	Primary:       ColorFromHex("#bd93f9"),
+	Secondary:     ColorFromHex("#ff79c6"),
+	Accent:        ColorFromHex("#ffb86c"),
 }
 
+// Osaka Jade (custom green-forward dark)
 var ThemeOsakaJade = Theme{
-	Primary:   (Style{}).WithFgHEX("#00a37a"),                               // jade
-	Secondary: (Style{}).WithFgHEX("#3dbd93"),                               // lighter jade
-	Accent:    (Style{}).WithFgHEX("#41c7b9"),                               // aqua
-	Neutral:   (Style{}).WithFgHEX("#d0f0e0"),                               // light fg
-	Muted:     (Style{}).WithFgHEX("#5a7d73"),                               // gray-green
-	Success:   (Style{}).WithFgHEX("#7ed09e"),                               // pastel green
-	Info:      (Style{}).WithFgHEX("#4fb0c6"),                               // blue-green
-	Warning:   (Style{}).WithFgHEX("#f0c674"),                               // amber
-	Error:     (Style{}).WithFgHEX("#d9534f"),                               // red
-	Disabled:  (Style{}).WithFgHEX("#4a605a").WithDim().WithStrikethrough(), // muted
-	Emphasis:  (Style{}).WithFgHEX("#00a37a").WithUnderline(),               // jade underline
-	Outline:   (Style{}).WithFgHEX("#355e4d"),                               // dark green
+	Background:    ColorFromHex("#0b1d13"),
+	BackgroundAlt: ColorFromHex("#10251a"),
+	Foreground:    ColorFromHex("#d6f1dd"),
+	ForegroundAlt: ColorFromHex("#bfe6cc"),
+	Highlight:     ColorFromHex("#153524"),
+	Cursor:        ColorFromHex("#d6f1dd"),
+	Muted:         ColorFromHex("#6b8f80"),
+	Outline:       ColorFromHex("#1e3a29"),
+	Red:           ColorFromHex("#ef6a6a"),
+	Yellow:        ColorFromHex("#e9d66b"),
+	Green:         ColorFromHex("#34d399"),
+	Blue:          ColorFromHex("#4fb3ff"),
+	Teal:          ColorFromHex("#00b3a4"),
+	Primary:       ColorFromHex("#a78bfa"),
+	Secondary:     ColorFromHex("#f472b6"),
+	Accent:        ColorFromHex("#f4a261"),
 }
 
+// Solarized Light
 var ThemeSolarizedLight = Theme{
-	Primary:   (Style{}).WithFgHEX("#268bd2"), // blue
-	Secondary: (Style{}).WithFgHEX("#2aa198"), // cyan
-	Accent:    (Style{}).WithFgHEX("#6c71c4"), // violet
-	Neutral:   (Style{}).WithFgHEX("#657b83"), // base00
-	Muted:     (Style{}).WithFgHEX("#93a1a1"), // base1
-	Success:   (Style{}).WithFgHEX("#859900"), // green
-	Info:      (Style{}).WithFgHEX("#268bd2"), // blue
-	Warning:   (Style{}).WithFgHEX("#b58900"), // yellow
-	Error:     (Style{}).WithFgHEX("#dc322f"), // red
-	Disabled:  (Style{}).WithFgHEX("#93a1a1").WithDim().WithStrikethrough(),
-	Emphasis:  (Style{}).WithFgHEX("#6c71c4").WithUnderline(),
-	Outline:   (Style{}).WithFgHEX("#eee8d5"), // base2
+	Background:    ColorFromHex("#fdf6e3"),
+	BackgroundAlt: ColorFromHex("#eee8d5"),
+	Foreground:    ColorFromHex("#657b83"),
+	ForegroundAlt: ColorFromHex("#586e75"),
+	Highlight:     ColorFromHex("#eee8d5"),
+	Cursor:        ColorFromHex("#586e75"),
+	Muted:         ColorFromHex("#93a1a1"),
+	Outline:       ColorFromHex("#839496"),
+	Red:           ColorFromHex("#dc322f"),
+	Yellow:        ColorFromHex("#b58900"),
+	Green:         ColorFromHex("#859900"),
+	Blue:          ColorFromHex("#268bd2"),
+	Teal:          ColorFromHex("#2aa198"),
+	Primary:       ColorFromHex("#6c71c4"),
+	Secondary:     ColorFromHex("#d33682"),
+	Accent:        ColorFromHex("#cb4b16"),
 }
 
-var ThemeCatppuccinLatte = Theme{
-	Primary:   (Style{}).WithFgHEX("#8839ef"), // mauve
-	Secondary: (Style{}).WithFgHEX("#1e66f5"), // blue
-	Accent:    (Style{}).WithFgHEX("#04a5e5"), // sky
-	Neutral:   (Style{}).WithFgHEX("#4c4f69"), // text
-	Muted:     (Style{}).WithFgHEX("#6c6f85"), // subtext0
-	Success:   (Style{}).WithFgHEX("#40a02b"), // green
-	Info:      (Style{}).WithFgHEX("#209fb5"), // teal
-	Warning:   (Style{}).WithFgHEX("#df8e1d"), // yellow
-	Error:     (Style{}).WithFgHEX("#d20f39"), // red
-	Disabled:  (Style{}).WithFgHEX("#9ca0b0").WithDim().WithStrikethrough(),
-	Emphasis:  (Style{}).WithFgHEX("#8839ef").WithUnderline(),
-	Outline:   (Style{}).WithFgHEX("#e6e9ef"), // crust
+// Catppuccin Latte (light)
+var CatppuccinLatte = Theme{
+	Background:    ColorFromHex("#eff1f5"),
+	BackgroundAlt: ColorFromHex("#e6e9ef"),
+	Foreground:    ColorFromHex("#4c4f69"),
+	ForegroundAlt: ColorFromHex("#5c5f77"),
+	Highlight:     ColorFromHex("#ccd0da"),
+	Cursor:        ColorFromHex("#4c4f69"),
+	Muted:         ColorFromHex("#9ca0b0"),
+	Outline:       ColorFromHex("#bcc0cc"),
+	Red:           ColorFromHex("#d20f39"),
+	Yellow:        ColorFromHex("#df8e1d"),
+	Green:         ColorFromHex("#40a02b"),
+	Blue:          ColorFromHex("#1e66f5"),
+	Teal:          ColorFromHex("#179299"),
+	Primary:       ColorFromHex("#8839ef"),
+	Secondary:     ColorFromHex("#ea76cb"),
+	Accent:        ColorFromHex("#fe640b"),
 }

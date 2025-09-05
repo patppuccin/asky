@@ -15,8 +15,7 @@ func NewSingleSelect() *SingleSelect {
 		theme:           ThemeDefault,
 		prefix:          "[?] ",
 		label:           "Select an option",
-		separator:       ": ",
-		help:            "",
+		description:     "",
 		defaultChoice:   -1,
 		choices:         []Choice{},
 		cursorIndicator: " * ",
@@ -26,15 +25,14 @@ func NewSingleSelect() *SingleSelect {
 	}
 }
 
-func (ss *SingleSelect) WithTheme(th Theme) *SingleSelect        { ss.theme = th; return ss }
-func (ss *SingleSelect) WithPrefix(p string) *SingleSelect       { ss.prefix = p; return ss }
-func (ss *SingleSelect) WithLabel(p string) *SingleSelect        { ss.label = p; return ss }
-func (ss *SingleSelect) WithSeparator(sep string) *SingleSelect  { ss.separator = sep; return ss }
-func (ss *SingleSelect) WithHelp(txt string) *SingleSelect       { ss.help = txt; return ss }
-func (ss *SingleSelect) WithDefaultChoice(idx int) *SingleSelect { ss.defaultChoice = idx; return ss }
-func (ss *SingleSelect) WithChoiceOptional() *SingleSelect       { ss.choiceOptional = true; return ss }
-func (ss *SingleSelect) WithChoices(ch []Choice) *SingleSelect   { ss.choices = ch; return ss }
-func (ss *SingleSelect) WithPageSize(n int) *SingleSelect        { ss.pageSize = n; return ss }
+func (ss *SingleSelect) WithTheme(th Theme) *SingleSelect         { ss.theme = th; return ss }
+func (ss *SingleSelect) WithPrefix(p string) *SingleSelect        { ss.prefix = p; return ss }
+func (ss *SingleSelect) WithLabel(p string) *SingleSelect         { ss.label = p; return ss }
+func (ss *SingleSelect) WithDescription(txt string) *SingleSelect { ss.description = txt; return ss }
+func (ss *SingleSelect) WithDefaultChoice(idx int) *SingleSelect  { ss.defaultChoice = idx; return ss }
+func (ss *SingleSelect) WithChoiceOptional() *SingleSelect        { ss.choiceOptional = true; return ss }
+func (ss *SingleSelect) WithChoices(ch []Choice) *SingleSelect    { ss.choices = ch; return ss }
+func (ss *SingleSelect) WithPageSize(n int) *SingleSelect         { ss.pageSize = n; return ss }
 func (ss *SingleSelect) WithCursorIndicator(ind string) *SingleSelect {
 	ss.cursorIndicator = ind
 	return ss
@@ -50,6 +48,8 @@ func (ss *SingleSelect) WithDisabledMarker(mrk string) *SingleSelect {
 
 // Presentation --------------------------------------------
 func (ss *SingleSelect) Render() (Choice, error) {
+	// Get the style preset
+	preset := newPreset(ss.theme)
 
 	// Sanity check for no choices
 	if len(ss.choices) == 0 {
@@ -67,36 +67,24 @@ func (ss *SingleSelect) Render() (Choice, error) {
 	endIdx := min(len(filteredChoices), pageSize)      // index after last visible choice
 
 	// Line constructors
-	helpLine := ss.theme.MutedStyle(ss.help)
-	promptLine := ss.theme.SecondaryStyle(ss.prefix) + ss.theme.PrimaryStyle(ss.label+ss.separator)
-	searchLine := ss.theme.MutedStyle("Search: ")
-	infoLineNormalMode := ss.theme.MutedStyle("↑/↓ or j/k move . space select . enter confirm" + ansiClearLineEnd + "\n\rTAB search")
-	infoLineSearchMode := ss.theme.MutedStyle("↑/↓ move . space select . enter confirm" + ansiClearLineEnd + "\n\rType to search . ESC/TAB nav")
+	descriptionLine := preset.accent.Sprint(ss.description)
+	promptLine := preset.primary.Sprint(ss.prefix) + preset.secondary.Sprint(ss.label)
+	searchLine := preset.primary.Sprint("Search: ")
+	helpLineNormalMode := preset.muted.Sprint("↑/↓ or j/k move . space select . enter confirm" + ansiClearLineEnd + "\n\rTAB search")
+	helpLineSearchMode := preset.muted.Sprint("↑/↓ move . space select . enter confirm" + ansiClearLineEnd + "\n\rType to search . ESC/TAB nav")
 
 	// Helper: Choice Renderer based on the state, selection & cursor
 	renderChoice := func(c Choice, cur, sel bool) string {
-		var choiceLine string
 		switch {
 		case c.Disabled:
-			choiceLine = ss.disabledMarker + c.Label
+			return preset.muted.Sprint(ss.disabledMarker) + preset.disabled.Sprint(c.Label)
 		case sel:
-			choiceLine = ss.selectionMarker + c.Label
+			return preset.success.Sprint(ss.selectionMarker + c.Label)
 		case cur:
-			choiceLine = ss.cursorIndicator + c.Label
+			return preset.primary.Sprint(ss.cursorIndicator + c.Label)
 		default:
-			choiceLine = strings.Repeat(" ", len(ss.selectionMarker)) + c.Label
+			return preset.neutral.Sprint(strings.Repeat(" ", len(ss.selectionMarker)) + c.Label)
 		}
-
-		if c.Disabled {
-			return ss.theme.MutedStyle(choiceLine)
-		}
-		if sel {
-			return ss.theme.SuccessStyle(choiceLine)
-		}
-		if cur {
-			return ss.theme.SecondaryStyle(choiceLine)
-		}
-		return ss.theme.AccentStyle(choiceLine)
 	}
 
 	// Helper: Filter choices based on search query (for search mode)
@@ -168,17 +156,18 @@ func (ss *SingleSelect) Render() (Choice, error) {
 	redraw := func(cursor, start, end int) {
 		os.Stdout.WriteString(ansiRestoreCursor)
 		os.Stdout.WriteString("\n")
-		if ss.help != "" {
-			os.Stdout.WriteString(helpLine + "\n")
+		if ss.description != "" {
+			os.Stdout.WriteString(descriptionLine + "\n")
 		}
 		os.Stdout.WriteString("\r" + promptLine + "\n")
 
 		// Search line with mode indicator
-		searchLine := ss.theme.MutedStyle("Search: ") + searchQuery
+		sl := searchLine
+		sl += preset.neutral.Sprint(searchQuery)
 		if searchMode {
-			searchLine += ss.theme.AccentStyle(" ◂ " + strconv.Itoa(len(filteredChoices)) + " hits") // Visual indicator for search mode
+			sl += preset.muted.Sprint(" ◂ " + strconv.Itoa(len(filteredChoices)) + " hits") // Visual indicator for search mode
 		}
-		os.Stdout.WriteString("\r" + searchLine)
+		os.Stdout.WriteString("\r" + sl)
 		os.Stdout.WriteString(ansiClearLineEnd)
 		os.Stdout.WriteString("\n")
 
@@ -197,9 +186,9 @@ func (ss *SingleSelect) Render() (Choice, error) {
 
 		// Show appropriate info line
 		if searchMode {
-			os.Stdout.WriteString(ansiClearLineEnd + "\n\r" + infoLineSearchMode + ansiClearLineEnd)
+			os.Stdout.WriteString(ansiClearLineEnd + "\n\r" + helpLineSearchMode + ansiClearLineEnd)
 		} else {
-			os.Stdout.WriteString(ansiClearLineEnd + "\n\r" + infoLineNormalMode + ansiClearLineEnd)
+			os.Stdout.WriteString(ansiClearLineEnd + "\n\r" + helpLineNormalMode + ansiClearLineEnd)
 		}
 	}
 
@@ -219,8 +208,8 @@ func (ss *SingleSelect) Render() (Choice, error) {
 
 	// Prompt Initial Renderer
 	os.Stdout.WriteString("\n")
-	if ss.help != "" {
-		os.Stdout.WriteString(helpLine + "\n")
+	if ss.description != "" {
+		os.Stdout.WriteString(descriptionLine + "\n")
 	}
 	os.Stdout.WriteString("\r" + promptLine + "\n")
 	os.Stdout.WriteString("\r" + searchLine + "\n")
@@ -231,9 +220,9 @@ func (ss *SingleSelect) Render() (Choice, error) {
 		os.Stdout.WriteString("\r" + renderChoice(c, cur, sel) + "\n")
 	}
 	if searchMode {
-		os.Stdout.WriteString("\n\r" + infoLineSearchMode)
+		os.Stdout.WriteString("\n\r" + helpLineSearchMode)
 	} else {
-		os.Stdout.WriteString("\n\r" + infoLineNormalMode)
+		os.Stdout.WriteString("\n\r" + helpLineNormalMode)
 	}
 
 	// Intercept keyboard events & handle them

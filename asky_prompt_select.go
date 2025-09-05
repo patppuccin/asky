@@ -10,8 +10,7 @@ type SingleSelect struct {
 	theme           Theme
 	prefix          string
 	label           string
-	separator       string
-	help            string
+	description     string
 	choices         []Choice
 	defaultChoice   int
 	choiceOptional  bool
@@ -26,7 +25,6 @@ type MultiSelect struct {
 	theme              Theme
 	prefix             string
 	label              string
-	separator          string
 	help               string
 	choices            []Choice
 	defaultChoices     []int

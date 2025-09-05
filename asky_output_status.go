@@ -35,44 +35,34 @@ func (s Status) WithLabel(label string) Status      { s.Label = label; return s 
 func (s Status) WithLevel(level StatusLevel) Status { s.Level = level; return s }
 
 func (s Status) Render() {
+	p := newPreset(s.Theme)
+	var styledPrefix string
 	if s.Label == "" {
 		return
 	}
 
-	var styledPrefix string
-	switch s.Level {
-	case StatusLevelSuccess:
+	getPrefix := func(px string) string {
 		if s.Prefix == "" {
-			s.Prefix = "[✓] "
+			return px
+		} else {
+			return s.Prefix
 		}
-		styledPrefix = s.Theme.SuccessStyle(s.Prefix)
-	case StatusLevelDebug:
-		if s.Prefix == "" {
-			s.Prefix = "[-] "
-		}
-		styledPrefix = s.Theme.MutedStyle(s.Prefix)
-	case StatusLevelInfo:
-		if s.Prefix == "" {
-			s.Prefix = "[i] "
-		}
-		styledPrefix = s.Theme.InfoStyle(s.Prefix)
-	case StatusLevelWarn:
-		if s.Prefix == "" {
-			s.Prefix = "[!] "
-		}
-		styledPrefix = s.Theme.WarningStyle(s.Prefix)
-	case StatusLevelError:
-		if s.Prefix == "" {
-			s.Prefix = "[x] "
-		}
-		styledPrefix = s.Theme.ErrorStyle(s.Prefix)
-	default:
-		if s.Prefix == "" {
-			s.Prefix = "[~] "
-		}
-		styledPrefix = s.Theme.PrimaryStyle(s.Prefix)
 	}
 
-	styledLabel := s.Theme.NeutralStyle(s.Label)
-	os.Stdout.WriteString(styledPrefix + styledLabel + "\n")
+	switch s.Level {
+	case StatusLevelSuccess:
+		styledPrefix = p.success.Sprint(getPrefix("[✓] "))
+	case StatusLevelDebug:
+		styledPrefix = p.debug.Sprint(getPrefix("[-] "))
+	case StatusLevelInfo:
+		styledPrefix = p.info.Sprint(getPrefix("[i] "))
+	case StatusLevelWarn:
+		styledPrefix = p.warn.Sprint(getPrefix("[!] "))
+	case StatusLevelError:
+		styledPrefix = p.err.Sprint(getPrefix("[x] "))
+	default:
+		styledPrefix = p.neutral.Sprint(getPrefix("[~] "))
+	}
+
+	os.Stdout.WriteString(styledPrefix + p.neutral.Sprint(s.Label) + "\n")
 }

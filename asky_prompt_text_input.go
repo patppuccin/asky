@@ -10,37 +10,34 @@ import (
 
 // Definition ----------------------------------------------
 type TextInput struct {
-	theme           Theme
-	promptSymbol    string
-	promptText      string
-	promptSeparator string
-	helpText        string
-	defaultValue    string
-	validator       func(string) (string, bool)
+	theme        Theme
+	prefix       string
+	label        string
+	description  string
+	placeholder  string
+	defaultValue string
+	validator    func(string) (string, bool)
 }
 
 // Initialization ------------------------------------------
 func NewTextInput() *TextInput {
 	return &TextInput{
-		theme:           ThemeDefault,
-		promptSymbol:    "[?] ",
-		promptText:      "Enter text input",
-		promptSeparator: ": ",
-		helpText:        "",
-		defaultValue:    "",
-		validator:       nil,
+		theme:        ThemeDefault,
+		prefix:       "[?] ",
+		label:        "Enter text input",
+		description:  "",
+		placeholder:  "",
+		defaultValue: "",
+		validator:    nil,
 	}
 }
 
 // Configuration -------------------------------------------
-func (ti *TextInput) WithTheme(th Theme) *TextInput        { ti.theme = th; return ti }
-func (ti *TextInput) WithPromptSymbol(p string) *TextInput { ti.promptSymbol = p; return ti }
-func (ti *TextInput) WithPromptText(p string) *TextInput   { ti.promptText = p; return ti }
-func (ti *TextInput) WithPromptSeparator(sep string) *TextInput {
-	ti.promptSeparator = sep
-	return ti
-}
-func (ti *TextInput) WithHelpText(txt string) *TextInput     { ti.helpText = txt; return ti }
+func (ti *TextInput) WithTheme(th Theme) *TextInput          { ti.theme = th; return ti }
+func (ti *TextInput) WithPrefix(p string) *TextInput         { ti.prefix = p; return ti }
+func (ti *TextInput) WithLabel(p string) *TextInput          { ti.label = p; return ti }
+func (ti *TextInput) WithDescription(txt string) *TextInput  { ti.description = txt; return ti }
+func (ti *TextInput) WithPlaceholder(txt string) *TextInput  { ti.placeholder = txt; return ti }
 func (ti *TextInput) WithDefaultValue(val string) *TextInput { ti.defaultValue = val; return ti }
 func (ti *TextInput) WithValidator(fn func(string) (string, bool)) *TextInput {
 	ti.validator = fn
@@ -49,58 +46,70 @@ func (ti *TextInput) WithValidator(fn func(string) (string, bool)) *TextInput {
 
 // Presentation --------------------------------------------
 func (ti *TextInput) Render() (string, error) {
+	// Get the style preset
+	preset := newPreset(ti.theme)
 
-	var inBuf []rune // Input buffer to store user input
-	cursorPos := 0   // Cursor position
-	interrupted := false
-	os.Stdout.WriteString(ansiSaveCursor) // Save cursor state before prompt
+	// State variables for this render cycle
+	interrupted := false   // true if user aborted (Ctrl+C)
+	receivedInput := false // turns true after user provides input event
+	var inBuf []rune       // Input buffer to store user input
+	cursorPos := 0         // Cursor position
 
-	// Help line construction
-	helpLine := ""
-	if ti.helpText != "" {
-		helpLine += ti.theme.MutedStyle(ti.helpText)
+	// Line constructors
+	descriptionLine := preset.accent.Sprint(ti.description)
+	promptLine := preset.primary.Sprint(ti.prefix) + preset.secondary.Sprint(ti.label)
+	var placeholderLine string
+	switch {
+	case ti.placeholder != "" && ti.defaultValue != "":
+		placeholderLine = preset.muted.Sprint(ti.placeholder + " (default: " + ti.defaultValue + ")")
+	case ti.placeholder != "":
+		placeholderLine = preset.muted.Sprint(ti.placeholder)
+	case ti.defaultValue != "":
+		placeholderLine = preset.muted.Sprint("default: " + ti.defaultValue)
 	}
-
-	// Prompt line construction
-	promptLine := ti.theme.SecondaryStyle(ti.promptSymbol)
-	promptLine += ti.theme.PrimaryStyle(ti.promptText)
-	if ti.defaultValue != "" {
-		promptLine += ti.theme.PrimaryStyle(" (" + ti.defaultValue + ")")
-	}
-	promptLine += ti.theme.PrimaryStyle(ti.promptSeparator)
-
-	// Prompt Initial Renderer
-	os.Stdout.WriteString("\n")
-	if ti.validator != nil {
-		os.Stdout.WriteString("\n")
-	}
-	os.Stdout.WriteString(helpLine + "\n")
-	os.Stdout.WriteString(promptLine)
+	helpLine := preset.muted.Sprint("Type to input. Enter to confirm")
 
 	// Prompt Redraw Renderer
 	redraw := func(input []rune, cursor int, validationMsg string, ok *bool) {
-		os.Stdout.WriteString(ansiRestoreCursor)
-		os.Stdout.WriteString("\n")
-		if ti.validator != nil && validationMsg != "" {
+		os.Stdout.WriteString(ansiRestoreCursor + ansiClearLineEnd + "\n\r")
+		if ti.description != "" {
+			os.Stdout.WriteString(descriptionLine + "\n\r")
+		}
+		os.Stdout.WriteString(promptLine + ansiClearLineEnd + " ")
+		if len(input) == 0 {
+			os.Stdout.WriteString(placeholderLine)
+		} else {
+			os.Stdout.WriteString(preset.neutral.Sprint(string(input)) + ansiClearLineEnd)
+			if cursor < len(input) {
+				cursorMoveLeft(len(input) - cursor)
+			}
+		}
+		os.Stdout.WriteString("\n\n\r" + ansiClearLineEnd)
+		if ti.validator != nil && validationMsg != "" && receivedInput {
 			if ok != nil && !*ok {
-				os.Stdout.WriteString(ti.theme.ErrorStyle(validationMsg))
+				os.Stdout.WriteString(preset.err.Sprint(validationMsg))
 			} else {
-				os.Stdout.WriteString(ti.theme.SuccessStyle(validationMsg))
+				os.Stdout.WriteString(preset.success.Sprint(validationMsg))
 			}
 			os.Stdout.WriteString(ansiClearLineEnd)
-			os.Stdout.WriteString("\n\r")
 		}
-
-		os.Stdout.WriteString(helpLine + "\n\r")
-		os.Stdout.WriteString(promptLine)
-		os.Stdout.WriteString(string(input))
-		os.Stdout.WriteString(ansiClearLineEnd)
-		if cursor < len(input) {
-			cursorMoveLeft(len(input) - cursor)
-		}
+		os.Stdout.WriteString("\n\n\r" + helpLine + ansiClearLineEnd)
 	}
 
+	// Helper: Reset cursor after prompt render
+	resetState := func() {
+		os.Stdout.WriteString(ansiRestoreCursor + ansiClearScreenEnd + ansiReset + ansiShowCursor)
+	}
+
+	// Save state before prompt & defer reset
+	os.Stdout.WriteString(ansiHideCursor + ansiSaveCursor)
+	defer resetState()
+
+	// Prompt Initial Renderer
+	redraw([]rune{}, 0, "", nil)
+
 	err := keyboard.Listen(func(key keys.Key) (stop bool, err error) {
+		receivedInput = true
 		switch key.Code {
 		case keys.CtrlC:
 			interrupted = true

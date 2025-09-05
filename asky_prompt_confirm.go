@@ -1,111 +1,113 @@
 package asky
 
 import (
-	"bufio"
 	"os"
 	"strings"
+
+	"atomicgo.dev/keyboard"
+	"atomicgo.dev/keyboard/keys"
 )
 
 type Confirm struct {
-	promptSymbol string
-	promptText   string
-	helperText   string
-	separator    string
-	defaultValue bool
-	theme        Theme
+	theme         Theme
+	prefix        string
+	label         string
+	description   string
+	defaultAnswer bool
 }
 
 func NewConfirm() *Confirm {
 	return &Confirm{
-		promptSymbol: "[?] ",
-		promptText:   "Are you sure?",
-		helperText:   "",
-		separator:    ": ",
-		defaultValue: false,
-		theme:        ThemeDefault,
+		theme:         ThemeDefault,
+		prefix:        "[?] ",
+		label:         "Are you sure?",
+		description:   "",
+		defaultAnswer: false,
 	}
 }
 
-func (c *Confirm) WithPromptSymbol(p string) *Confirm {
-	c.promptSymbol = p
-	return c
-}
+func (cf *Confirm) WithTheme(th Theme) *Confirm         { cf.theme = th; return cf }
+func (cf *Confirm) WithPrefix(p string) *Confirm        { cf.prefix = p; return cf }
+func (cf *Confirm) WithLabel(p string) *Confirm         { cf.label = p; return cf }
+func (cf *Confirm) WithDescription(txt string) *Confirm { cf.description = txt; return cf }
+func (cf *Confirm) WithDefaultAnswer(val bool) *Confirm { cf.defaultAnswer = val; return cf }
 
-func (c *Confirm) WithPromptText(p string) *Confirm {
-	c.promptText = p
-	return c
-}
+// --- Presentation --------------------------------------------
+func (cf *Confirm) Render() (bool, error) {
+	// Get the style preset
+	preset := newPreset(cf.theme)
 
-func (c *Confirm) WithHelperText(txt string) *Confirm {
-	c.helperText = txt
-	return c
-}
+	// State variables for this render cycle
+	interrupted := false // true if user aborted (Ctrl+C)
+	confirm := true
 
-func (c *Confirm) WithSeparator(sep string) *Confirm {
-	c.separator = sep
-	return c
-}
-
-func (c *Confirm) WithTheme(th Theme) *Confirm {
-	c.theme = th
-	return c
-}
-
-func (c *Confirm) WithDefaultOption(val bool) *Confirm {
-	c.defaultValue = val
-	return c
-}
-
-func (c *Confirm) Render() (bool, error) {
-	os.Stdout.WriteString(ansiSaveCursor)
-
-	// Helper + default
-	os.Stdout.WriteString("\r\n")
-
-	yChar := "y"
-	nChar := "N"
-	if c.helperText != "" || c.defaultValue {
-		helper := c.helperText
-		if helper != "" {
-			helper += " "
-		}
-		defVal := "No"
-		if c.defaultValue {
-			yChar, nChar = "Y", "n"
-			defVal = "Yes"
-		}
-		helper += "(Default: " + defVal + ")"
-		os.Stdout.WriteString(c.theme.MutedStyle(helper))
-		os.Stdout.Write([]byte("\n"))
+	// Set default answer for state tracking
+	if !cf.defaultAnswer {
+		confirm = false
 	}
-	// Show prompt
-	os.Stdout.WriteString("\r")
-	os.Stdout.WriteString(c.theme.SecondaryStyle(c.promptSymbol))
-	os.Stdout.WriteString(c.theme.PrimaryStyle(c.promptText))
-	os.Stdout.WriteString(c.theme.AccentStyle(" ["))
-	os.Stdout.WriteString(c.theme.SuccessStyle(yChar))
-	os.Stdout.WriteString(c.theme.AccentStyle("/"))
-	os.Stdout.WriteString(c.theme.ErrorStyle(nChar))
-	os.Stdout.WriteString(c.theme.AccentStyle("]"))
-	os.Stdout.WriteString(c.theme.PrimaryStyle(c.separator))
 
-	// Read input
-	reader := bufio.NewReader(os.Stdin)
-	input, err := reader.ReadString('\n')
+	// Line constructors
+	descriptionLine := preset.accent.Sprint(cf.description)
+	promptLine := preset.primary.Sprint(cf.prefix) + preset.secondary.Sprint(cf.label)
+	helpLine := preset.muted.Sprint("← or → to move. Enter to confirm")
 
-	os.Stdout.Write([]byte("\033[u\033[J"))
+	// Helper: Reset cursor state after prompt render
+	resetState := func() {
+		os.Stdout.WriteString(ansiRestoreCursor + ansiClearScreenEnd + ansiReset + ansiShowCursor)
+	}
 
+	// Helper: Redraw the prompt with the current state
+	redraw := func() {
+		os.Stdout.WriteString(ansiRestoreCursor)
+		yesStyle := preset.primary.Sprint(" YES ")
+		if confirm {
+			yesStyle = preset.highlight.Sprint(" YES ")
+		}
+		noStyle := preset.primary.Sprint(" NO ")
+		if !confirm {
+			noStyle = preset.highlight.Sprint(" NO ")
+		}
+
+		os.Stdout.WriteString("\n")
+		if cf.description != "" {
+			os.Stdout.WriteString(descriptionLine + "\n")
+		}
+		os.Stdout.WriteString("\r" + promptLine + "\n")
+		os.Stdout.WriteString("\n\r" + strings.Repeat(" ", len(cf.prefix)))
+		os.Stdout.WriteString(yesStyle + "  " + noStyle + "\n\r\n")
+		os.Stdout.WriteString(helpLine + "\n")
+	}
+
+	// Save cursor state before prompt & defer reset
+	os.Stdout.WriteString(ansiSaveCursor + ansiHideCursor)
+	defer resetState()
+
+	// Initial render
+	redraw()
+
+	// Intercept keyboard events & handle them
+	err := keyboard.Listen(func(key keys.Key) (stop bool, err error) {
+		switch key.Code {
+		case keys.Enter:
+			return true, nil
+		case keys.CtrlC:
+			return true, nil
+		case keys.Left, keys.Right:
+			confirm = !confirm
+		}
+		redraw()
+		return false, nil
+	})
+
+	// Handle errors
 	if err != nil {
+		return false, err
+	}
+
+	// Handle interrupts
+	if interrupted {
 		return false, ErrInterrupted
 	}
 
-	// Parse yes/no
-	switch strings.TrimSpace(strings.ToLower(input)) {
-	case "y", "yes":
-		return true, nil
-	case "n", "no":
-		return false, nil
-	default:
-		return c.defaultValue, nil
-	}
+	return confirm, nil
 }

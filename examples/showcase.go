@@ -95,146 +95,101 @@ func main() {
 
 	askyTheme := asky.ThemeCatppuccinMocha
 
-	asky.NewStatus().WithLabel("Welcome to Asky").WithLevel(asky.StatusLevelDefault).Render()
-	asky.NewStatus().WithLabel("This is a success message").WithLevel(asky.StatusLevelSuccess).Render()
-	asky.NewStatus().WithLabel("This is a debug message").WithLevel(asky.StatusLevelDebug).Render()
-	asky.NewStatus().WithLabel("This is a status message").WithLevel(asky.StatusLevelInfo).Render()
-	asky.NewStatus().WithLabel("This is a warning message").WithLevel(asky.StatusLevelWarn).Render()
-	asky.NewStatus().WithLabel("This is an error message").WithLevel(asky.StatusLevelError).Render()
-
-	pb2 := asky.NewProgress().
-		WithWidth(30).
-		WithPattern(asky.ProgressPatternDefault).
-		WithLabel("Running Preparations").
-		WithHelp("This will take a while").
-		WithSteps(100).
-		WithTheme(askyTheme)
-
-	pb2.Start()
-
-	for range 100 {
-		time.Sleep(50 * time.Millisecond)
-		pb2.Increment()
-	}
-
-	pb2.Stop(false)
-	fmt.Println(
-		askyTheme.SuccessStyle("[+]"),
-		askyTheme.NeutralStyle("All preparations are done"),
-	)
-
-	var err error
-	if err == nil {
-		return
-	}
-
-	// sp2 := asky.NewSpinner().
-	// 	WithLabel("Getting things ready...").
-	// 	WithHelp("Fetching data from the deep web").
-	// 	WithFrames(asky.SpinnerPatternDots).
-	// 	WithTheme(askyTheme)
-	// sp2.Start()
-	// time.Sleep(5 * time.Second) // simulate work
-	// sp2.Stop()                  // or s.Stop(false, "Failed")
-	// fmt.Println(
-	// 	askyTheme.SuccessStyle("[+]"),
-	// 	askyTheme.NeutralStyle("All things are ready"),
-	// )
+	// asky.NewStatus().WithLabel("Welcome to Asky").WithLevel(asky.StatusLevelInfo).Render()
+	// asky.NewStatus().WithLabel("This is a success message").WithLevel(asky.StatusLevelSuccess).Render()
+	// asky.NewStatus().WithLabel("This is a debug message").WithLevel(asky.StatusLevelDebug).Render()
+	// asky.NewStatus().WithLabel("This is a status message").WithLevel(asky.StatusLevelInfo).Render()
+	// asky.NewStatus().WithLabel("This is a warning message").WithLevel(asky.StatusLevelWarn).Render()
+	// asky.NewStatus().WithLabel("This is an error message").WithLevel(asky.StatusLevelError).Render()
 
 	// --- Prompt Showcase: Text Input --------------------------
 	fname, err := asky.NewTextInput().
-		WithPromptText("Enter first name").
-		WithDefaultValue("John").
-		WithHelpText("This name is used as a greet name").
-		WithPromptSeparator(": ").
+		WithLabel("Enter first name:").
+		WithPlaceholder("John").
+		WithDescription("This name is used as a greet name").
 		WithValidator(firstNameValidator).
 		WithTheme(askyTheme).
 		Render()
 	if err != nil {
 		if errors.Is(err, asky.ErrInterrupted) {
-			fmt.Println("Input Cancelled")
+			asky.NewStatus().WithLabel("User cancelled input").WithLevel(asky.StatusLevelInfo).Render()
+		} else {
+			asky.NewStatus().WithLabel("Error: " + err.Error()).WithLevel(asky.StatusLevelError).Render()
 		}
-		fmt.Println("Error: " + err.Error())
 	}
 
 	// --- Prompt Showcase: Text Input -------------------------
 	lname, err := asky.NewTextInput().
-		WithPromptText("Enter last name").
-		WithHelpText("This is optional").
-		WithPromptSeparator(": ").
+		WithLabel("Enter last name").
+		WithDescription("This is optional").
 		WithTheme(askyTheme).
 		Render()
 	if err != nil {
 		if errors.Is(err, asky.ErrInterrupted) {
-			fmt.Println("Input Cancelled")
-			return
+			asky.NewStatus().WithLabel("User cancelled input").WithLevel(asky.StatusLevelInfo).Render()
+		} else {
+			asky.NewStatus().WithLabel("Error: " + err.Error()).WithLevel(asky.StatusLevelError).Render()
 		}
-		fmt.Println("Error: " + err.Error())
 	}
 
 	fmt.Println()
-	fmt.Println(
-		askyTheme.SuccessStyle("[+]"),
-		askyTheme.PrimaryStyle("User's Name:"),
-		askyTheme.AccentStyle(fname+" "+lname),
-	)
+	asky.NewStatus().WithLabel("User's Name: " + fname + " " + lname).WithLevel(asky.StatusLevelSuccess).Render()
 
-	// --- Prompt Showcase: Number Input -----------------------
-	age, err := asky.NewNumberInput().
-		WithPromptText("Enter your age").
-		WithHelpText("This is a number input").
-		WithPromptSeparator(": ").
-		WithTheme(askyTheme).
-		WithValidator(ageValidator).
-		Render()
-	if err != nil {
-		if errors.Is(err, asky.ErrInterrupted) {
-			fmt.Println("Input Cancelled")
-			return
-		}
-		fmt.Println("Error: " + err.Error())
-	}
+	// // --- Prompt Showcase: Number Input -----------------------
+	// age, err := asky.NewNumberInput().
+	// 	WithPromptText("Enter your age").
+	// 	WithHelpText("This is a number input").
+	// 	WithPromptSeparator(": ").
+	// 	WithTheme(askyTheme).
+	// 	WithValidator(ageValidator).
+	// 	Render()
+	// if err != nil {
+	// 	if errors.Is(err, asky.ErrInterrupted) {
+	// 		fmt.Println("Input Cancelled")
+	// 		return
+	// 	}
+	// 	fmt.Println("Error: " + err.Error())
+	// }
 
-	fmt.Println(
-		askyTheme.SuccessStyle("[+]"),
-		askyTheme.PrimaryStyle("User's Age:"),
-		askyTheme.AccentStyle(age),
-	)
+	// fmt.Println(
+	// 	askyTheme.SuccessStyle("[+]"),
+	// 	askyTheme.PrimaryStyle("User's Age:"),
+	// 	askyTheme.AccentStyle(age),
+	// )
 
-	// --- Prompt Showcase: Secure Input -----------------------
+	// // --- Prompt Showcase: Secure Input -----------------------
 
-	pwd, err := asky.NewSecureInput().
-		WithPromptText("Enter a secure password").
-		WithHelpText("Use a mix of letters, numbers & symbols").
-		WithPromptSeparator(": ").
-		WithTheme(askyTheme).
-		WithValidator(passwordStrengthValidator).
-		Render()
-	if err != nil {
-		if errors.Is(err, asky.ErrInterrupted) {
-			fmt.Println(
-				askyTheme.ErrorStyle("[-]"),
-				askyTheme.PrimaryStyle("Password Cancelled"),
-			)
-			return
-		} else {
-			fmt.Println(
-				askyTheme.ErrorStyle("[-]"),
-				askyTheme.PrimaryStyle("Error: "+err.Error()),
-			)
-		}
-	} else {
-		fmt.Println(
-			askyTheme.SuccessStyle("[+]"),
-			askyTheme.PrimaryStyle(fmt.Sprintf("Password is %d characters long", len(pwd))),
-		)
-	}
+	// pwd, err := asky.NewSecureInput().
+	// 	WithPromptText("Enter a secure password").
+	// 	WithHelpText("Use a mix of letters, numbers & symbols").
+	// 	WithPromptSeparator(": ").
+	// 	WithTheme(askyTheme).
+	// 	WithValidator(passwordStrengthValidator).
+	// 	Render()
+	// if err != nil {
+	// 	if errors.Is(err, asky.ErrInterrupted) {
+	// 		fmt.Println(
+	// 			askyTheme.ErrorStyle("[-]"),
+	// 			askyTheme.PrimaryStyle("Password Cancelled"),
+	// 		)
+	// 		return
+	// 	} else {
+	// 		fmt.Println(
+	// 			askyTheme.ErrorStyle("[-]"),
+	// 			askyTheme.PrimaryStyle("Error: "+err.Error()),
+	// 		)
+	// 	}
+	// } else {
+	// 	fmt.Println(
+	// 		askyTheme.SuccessStyle("[+]"),
+	// 		askyTheme.PrimaryStyle(fmt.Sprintf("Password is %d characters long", len(pwd))),
+	// 	)
+	// }
 
-	// --- Prompt Showcase: Select -----------------------------
+	// // --- Prompt Showcase: Select -----------------------------
 	faveLang, err := asky.NewSingleSelect().
 		WithLabel("Pick the favourite language").
-		WithHelp("This is used to tailor the recommendations").
-		WithSeparator("").
+		WithDescription("This is used to tailor the recommendations").
 		WithPageSize(6).
 		WithChoices([]asky.Choice{
 			// Systems / Low-level
@@ -274,75 +229,57 @@ func main() {
 		Render()
 	if err != nil {
 		if errors.Is(err, asky.ErrInterrupted) {
-			fmt.Println("Input Cancelled")
+			asky.NewStatus().WithLabel("User cancelled selection").WithLevel(asky.StatusLevelInfo).Render()
 			// return
 		}
-		fmt.Println("Error: " + err.Error())
+		asky.NewStatus().WithLabel("Error: " + err.Error()).WithLevel(asky.StatusLevelError).Render()
 	} else {
-		fmt.Println(
-			askyTheme.SuccessStyle("[+]"),
-			askyTheme.PrimaryStyle("User's Favourite Languages:"),
-			askyTheme.AccentStyle(faveLang.Label),
-		)
+		asky.NewStatus().WithLabel("User's Favourite Languages: " + faveLang.Label).WithLevel(asky.StatusLevelSuccess).Render()
 		// return
 	}
 
 	// --- Prompt Showcase: Confirmation -----------------------
 	ok, _ := asky.NewConfirm().
-		WithPromptText("Create account with username " + fname + "?").
-		WithHelperText("You will be able to change this later").
-		WithDefaultOption(false).
+		WithLabel("Create a brand new account ?").
+		WithDescription("You will be able to change this later").
+		WithDefaultAnswer(false).
 		WithTheme(askyTheme).
 		Render()
 
 	if ok {
-		fmt.Println(
-			askyTheme.SuccessStyle("[+]"),
-			askyTheme.PrimaryStyle("User created"),
-		)
-
+		asky.NewStatus().WithLabel("User created successfully").WithLevel(asky.StatusLevelSuccess).Render()
 	} else {
-		fmt.Println(
-			askyTheme.ErrorStyle("[-]"),
-			askyTheme.PrimaryStyle("It's okay, you can try again later"),
-		)
+		asky.NewStatus().WithLabel("Account creation skipped. You can try again later").WithLevel(asky.StatusLevelInfo).Render()
 	}
 
 	// --- Indicator: Loading Spinner --------------------------
 	sp := asky.NewSpinner().
 		WithLabel("Getting things ready...").
-		WithHelp("Fetching data from the deep web").
+		WithDescription("Fetching data from the deep web").
 		WithFrames(asky.SpinnerPatternDots).
 		WithTheme(askyTheme)
 	sp.Start()
-	time.Sleep(3 * time.Second) // simulate work
+	time.Sleep(4 * time.Second) // simulate work
 	sp.Stop()                   // or s.Stop(false, "Failed")
-	fmt.Println(
-		askyTheme.SuccessStyle("[+]"),
-		askyTheme.PrimaryStyle("All things are ready"),
-	)
+	asky.NewStatus().WithLabel("All things are ready").WithLevel(asky.StatusLevelSuccess).Render()
 
-	// --- Indicator: Progress Bar -----------------------------
+	// // --- Indicator: Progress Bar -----------------------------
 	pb := asky.NewProgress().
 		WithWidth(30).
 		WithPattern(asky.ProgressPatternDefault).
-		WithLabel("Running preparations...").
-		WithHelp("This will take a while").
+		WithLabel("Running Preparations").
+		WithDescription("This will take a while").
 		WithSteps(100).
 		WithTheme(askyTheme)
 
 	pb.Start()
-
 	for range 100 {
 		time.Sleep(50 * time.Millisecond)
 		pb.Increment()
 	}
 
-	pb.Stop(false)
-	fmt.Println(
-		askyTheme.SuccessStyle("[+]"),
-		askyTheme.NeutralStyle("All preparations are done"),
-	)
+	pb.Stop()
+	asky.NewStatus().WithLabel("All preparations are done").WithLevel(asky.StatusLevelSuccess).Render()
 
-	fmt.Print(askyTheme.InfoStyle("\n# Showcase Completed ------------------------\n\n"))
+	fmt.Print(asky.NewStyle().FG(askyTheme.Foreground).Bold().Sprint("\n# Showcase Completed ------------------------\n\n"))
 }
