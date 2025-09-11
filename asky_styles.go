@@ -183,7 +183,7 @@ func NewAttrib() *attribs { return &attribs{} }
 type Style struct {
 	theme *Theme
 
-	// Styles for status messages
+	// Styles for Status Messages
 	StatusSuccessPrefix *attribs
 	StatusSuccessLabel  *attribs
 	StatusDebugPrefix   *attribs
@@ -194,6 +194,12 @@ type Style struct {
 	StatusWarnLabel     *attribs
 	StatusErrorPrefix   *attribs
 	StatusErrorLabel    *attribs
+
+	// Styles for Banners
+	BannerLabel           *attribs
+	BannerLabelPadChar    *attribs
+	BannerSubLabel        *attribs
+	BannerSubLabelPadChar *attribs
 
 	// Styles for Text & Secure Input Prompts
 	InputPrefix         *attribs
@@ -247,7 +253,7 @@ func StyleDefault(theme *Theme) *Style {
 	return &Style{
 		theme: theme,
 
-		// Default Styles for status messages
+		// Default Styles for Status Messages
 		StatusSuccessPrefix: NewAttrib().FG(theme.Green),
 		StatusSuccessLabel:  NewAttrib().FG(theme.Foreground),
 		StatusDebugPrefix:   NewAttrib().FG(theme.Muted),
@@ -258,6 +264,12 @@ func StyleDefault(theme *Theme) *Style {
 		StatusWarnLabel:     NewAttrib().FG(theme.Foreground),
 		StatusErrorPrefix:   NewAttrib().FG(theme.Red),
 		StatusErrorLabel:    NewAttrib().FG(theme.Foreground),
+
+		// Default Styles for Banners
+		BannerLabel:           NewAttrib().FG(theme.Primary),
+		BannerLabelPadChar:    NewAttrib().FG(theme.Accent),
+		BannerSubLabel:        NewAttrib().FG(theme.Secondary),
+		BannerSubLabelPadChar: NewAttrib().FG(theme.Accent),
 
 		// Default Styles for Text & Secure Input Prompts
 		InputPrefix:         NewAttrib().FG(theme.Primary),
