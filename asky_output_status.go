@@ -1,6 +1,6 @@
 package asky
 
-// --- Definitions -----------------------------------------
+// --- Definition -----------------------------------------
 type StatusLevel int
 
 const (
@@ -28,13 +28,14 @@ func NewStatus() Status {
 	}
 }
 
-// --- Constructors ----------------------------------------
+// --- Configuration ---------------------------------------
 func (st Status) WithTheme(theme Theme) Status       { st.theme = &theme; return st }
 func (st Status) WithStyle(style Style) Status       { st.style = &style; return st }
 func (st Status) WithPrefix(prefix string) Status    { st.prefix = prefix; return st }
 func (st Status) WithLabel(label string) Status      { st.label = label; return st }
 func (st Status) WithLevel(level StatusLevel) Status { st.level = level; return st }
 
+// --- Presentation ----------------------------------------
 func (st Status) getPrefix(px string) string {
 	if st.prefix == "" {
 		return px
@@ -42,7 +43,6 @@ func (st Status) getPrefix(px string) string {
 	return st.prefix
 }
 
-// --- Presentation ----------------------------------------
 func (st Status) Render() {
 	// Sanity check to skip render if both label and prefix are empty
 	if st.label == "" && st.prefix == "" {
