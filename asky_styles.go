@@ -243,7 +243,7 @@ type Style struct {
 	ProgressBarStatus  *attribs
 }
 
-func DefaultStyle(theme *Theme) *Style {
+func StyleDefault(theme *Theme) *Style {
 	return &Style{
 		theme: theme,
 
