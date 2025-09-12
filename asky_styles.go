@@ -203,12 +203,14 @@ type Style struct {
 	BannerSubLabelPadChar *attribs
 
 	// Styles for Text & Secure Input Prompts
+	InputDesc           *attribs
 	InputPrefix         *attribs
 	InputLabel          *attribs
-	InputDesc           *attribs
-	InputHelp           *attribs
+	InputPlaceholder    *attribs
+	InputText           *attribs
 	InputValidationPass *attribs
 	InputValidationFail *attribs
+	InputHelp           *attribs
 
 	// Styles for Confirmation Prompts
 	ConfirmationPrefix         *attribs
@@ -273,12 +275,14 @@ func StyleDefault(theme *Theme) *Style {
 		BannerSubLabelPadChar: NewAttrib().FG(theme.Accent),
 
 		// Default Styles for Text & Secure Input Prompts
+		InputDesc:           NewAttrib().FG(theme.Accent),
 		InputPrefix:         NewAttrib().FG(theme.Primary),
 		InputLabel:          NewAttrib().FG(theme.Secondary),
-		InputDesc:           NewAttrib().FG(theme.Accent),
-		InputHelp:           NewAttrib().FG(theme.Muted),
+		InputPlaceholder:    NewAttrib().FG(theme.Muted),
+		InputText:           NewAttrib().FG(theme.Foreground),
 		InputValidationPass: NewAttrib().FG(theme.Green),
 		InputValidationFail: NewAttrib().FG(theme.Red),
+		InputHelp:           NewAttrib().FG(theme.Muted),
 
 		// Default Styles for Confirmation Prompts
 		ConfirmationPrefix:         NewAttrib().FG(theme.Primary),
