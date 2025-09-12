@@ -13,8 +13,9 @@ import (
 var (
 	stdOutput = colorable.NewColorableStdout()
 	stdError  = colorable.NewColorableStderr()
-	noColor   = os.Getenv("NO_COLOR") != "" || os.Getenv("TERM") == "dumb" ||
+	noTTY     = os.Getenv("TERM") == "dumb" ||
 		(!isatty.IsTerminal(os.Stdout.Fd()) && !isatty.IsCygwinTerminal(os.Stdout.Fd()))
+	noColor = os.Getenv("NO_COLOR") != ""
 )
 
 // --- Color Definition ------------------------------------
@@ -124,17 +125,17 @@ func (st *attribs) isEmpty() bool {
 
 // Sprint returns the text with the attribs applied.
 func (st *attribs) Sprint(text string) string {
-
-	if text == "" || st.isEmpty() {
+	// If no content, no color, no TTY, or no attributes, return the text as-is
+	if text == "" || noColor || noTTY || st.isEmpty() {
 		return text
 	}
 
-	// Build the escape sequence
+	// Build the ANSI escape sequence
 	var b strings.Builder
 	b.Grow(len(text) + 24)
 	b.WriteString("\x1b[")
 
-	first := true // flag to check code presence
+	first := true // flag to check escape code presence
 	write := func(code string) {
 		if code == "" {
 			return
