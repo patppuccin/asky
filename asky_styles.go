@@ -244,7 +244,7 @@ type Style struct {
 	ProgressPrefix     *attribs
 	ProgressLabel      *attribs
 	ProgressDesc       *attribs
-	ProgressPad        *attribs
+	ProgressBarPad     *attribs
 	ProgressBarDone    *attribs
 	ProgressBarPending *attribs
 	ProgressBarStatus  *attribs
@@ -314,7 +314,7 @@ func StyleDefault(theme *Theme) *Style {
 		ProgressPrefix:     NewAttrib().FG(theme.Primary),
 		ProgressLabel:      NewAttrib().FG(theme.Secondary),
 		ProgressDesc:       NewAttrib().FG(theme.Accent),
-		ProgressPad:        NewAttrib().FG(theme.Secondary),
+		ProgressBarPad:     NewAttrib().FG(theme.Secondary),
 		ProgressBarDone:    NewAttrib().FG(theme.Green),
 		ProgressBarPending: NewAttrib().FG(theme.Yellow),
 		ProgressBarStatus:  NewAttrib().FG(theme.Secondary),
