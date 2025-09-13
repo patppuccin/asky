@@ -221,10 +221,11 @@ type Style struct {
 	ConfirmationUnselectedItem *attribs
 
 	// Styles for Selection Prompts
-	Selectionprefix             *attribs
+	SelectionPrefix             *attribs
 	SelectionLabel              *attribs
 	SelectionDesc               *attribs
 	SelectionHelp               *attribs
+	SelectionSearchLabel        *attribs
 	SelectionSearchHint         *attribs
 	SelectionValidationPass     *attribs
 	SelectionValidationFail     *attribs
@@ -293,10 +294,11 @@ func StyleDefault(theme *Theme) *Style {
 		ConfirmationUnselectedItem: NewAttrib().FG(theme.Primary),
 
 		// Default Styles for Selection Prompts
-		Selectionprefix:             NewAttrib().FG(theme.Primary),
+		SelectionPrefix:             NewAttrib().FG(theme.Primary),
 		SelectionLabel:              NewAttrib().FG(theme.Secondary),
 		SelectionDesc:               NewAttrib().FG(theme.Accent),
 		SelectionHelp:               NewAttrib().FG(theme.Muted),
+		SelectionSearchLabel:        NewAttrib().FG(theme.Primary),
 		SelectionSearchHint:         NewAttrib().FG(theme.Muted),
 		SelectionValidationPass:     NewAttrib().FG(theme.Green),
 		SelectionValidationFail:     NewAttrib().FG(theme.Red),
