@@ -8,7 +8,7 @@ import (
 )
 
 // --- Definition ------------------------------------------
-type TextInput struct {
+type textInput struct {
 	theme        *Theme
 	style        *Style
 	prefix       string
@@ -20,8 +20,8 @@ type TextInput struct {
 }
 
 // --- Initiation ------------------------------------------
-func NewTextInput() *TextInput {
-	return &TextInput{
+func NewTextInput() *textInput {
+	return &textInput{
 		prefix:    "[?] ",
 		label:     "Enter text input",
 		validator: nil,
@@ -29,20 +29,20 @@ func NewTextInput() *TextInput {
 }
 
 // --- Configuration ---------------------------------------
-func (ti *TextInput) WithTheme(theme Theme) *TextInput       { ti.theme = &theme; return ti }
-func (ti *TextInput) WithStyle(style Style) *TextInput       { ti.style = &style; return ti }
-func (ti *TextInput) WithPrefix(p string) *TextInput         { ti.prefix = p; return ti }
-func (ti *TextInput) WithLabel(p string) *TextInput          { ti.label = p; return ti }
-func (ti *TextInput) WithDescription(txt string) *TextInput  { ti.description = txt; return ti }
-func (ti *TextInput) WithPlaceholder(txt string) *TextInput  { ti.placeholder = txt; return ti }
-func (ti *TextInput) WithDefaultValue(val string) *TextInput { ti.defaultValue = val; return ti }
-func (ti *TextInput) WithValidator(fn func(string) (string, bool)) *TextInput {
+func (ti *textInput) WithTheme(theme Theme) *textInput       { ti.theme = &theme; return ti }
+func (ti *textInput) WithStyle(style Style) *textInput       { ti.style = &style; return ti }
+func (ti *textInput) WithPrefix(p string) *textInput         { ti.prefix = p; return ti }
+func (ti *textInput) WithLabel(p string) *textInput          { ti.label = p; return ti }
+func (ti *textInput) WithDescription(txt string) *textInput  { ti.description = txt; return ti }
+func (ti *textInput) WithPlaceholder(txt string) *textInput  { ti.placeholder = txt; return ti }
+func (ti *textInput) WithDefaultValue(val string) *textInput { ti.defaultValue = val; return ti }
+func (ti *textInput) WithValidator(fn func(string) (string, bool)) *textInput {
 	ti.validator = fn
 	return ti
 }
 
 // --- Presentation ----------------------------------------
-func (ti *TextInput) Render() (string, error) {
+func (ti *textInput) Render() (string, error) {
 	// Setup theme and style (apply defaults if not set)
 	if ti.theme == nil {
 		ti.theme = &ThemeDefault

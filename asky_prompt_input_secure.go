@@ -8,7 +8,7 @@ import (
 )
 
 // --- Definition ------------------------------------------
-type SecureInput struct {
+type secureInput struct {
 	theme       *Theme
 	style       *Style
 	prefix      string
@@ -20,8 +20,8 @@ type SecureInput struct {
 }
 
 // --- Initiation ------------------------------------------
-func NewSecureInput() *SecureInput {
-	return &SecureInput{
+func NewSecureInput() *secureInput {
+	return &secureInput{
 		prefix:    "[?] ",
 		label:     "Enter secure input",
 		noEcho:    false,
@@ -30,20 +30,20 @@ func NewSecureInput() *SecureInput {
 }
 
 // --- Configuration ---------------------------------------
-func (si *SecureInput) WithTheme(theme Theme) *SecureInput      { si.theme = &theme; return si }
-func (si *SecureInput) WithStyle(style Style) *SecureInput      { si.style = &style; return si }
-func (si *SecureInput) WithPrefix(p string) *SecureInput        { si.prefix = p; return si }
-func (si *SecureInput) WithLabel(p string) *SecureInput         { si.label = p; return si }
-func (si *SecureInput) WithDescription(txt string) *SecureInput { si.description = txt; return si }
-func (si *SecureInput) WithPlaceholder(txt string) *SecureInput { si.placeholder = txt; return si }
-func (si *SecureInput) WithNoEcho() *SecureInput                { si.noEcho = true; return si }
-func (si *SecureInput) WithValidator(fn func(string) (string, bool)) *SecureInput {
+func (si *secureInput) WithTheme(theme Theme) *secureInput      { si.theme = &theme; return si }
+func (si *secureInput) WithStyle(style Style) *secureInput      { si.style = &style; return si }
+func (si *secureInput) WithPrefix(p string) *secureInput        { si.prefix = p; return si }
+func (si *secureInput) WithLabel(p string) *secureInput         { si.label = p; return si }
+func (si *secureInput) WithDescription(txt string) *secureInput { si.description = txt; return si }
+func (si *secureInput) WithPlaceholder(txt string) *secureInput { si.placeholder = txt; return si }
+func (si *secureInput) WithNoEcho() *secureInput                { si.noEcho = true; return si }
+func (si *secureInput) WithValidator(fn func(string) (string, bool)) *secureInput {
 	si.validator = fn
 	return si
 }
 
 // --- Presentation ----------------------------------------
-func (si *SecureInput) Render() (string, error) {
+func (si *secureInput) Render() (string, error) {
 	// Setup theme and style (apply defaults if not set)
 	if si.theme == nil {
 		si.theme = &ThemeDefault
