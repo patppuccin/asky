@@ -24,7 +24,7 @@ type ProgressPattern struct {
 	BarPadLeft, BarPadRight string
 }
 
-type Progress struct {
+type progress struct {
 	theme                      *Theme
 	style                      *Style
 	prefix, label, description string
@@ -37,8 +37,8 @@ type Progress struct {
 }
 
 // --- Initiation ------------------------------------------
-func NewProgress() *Progress {
-	return &Progress{
+func NewProgress() *progress {
+	return &progress{
 		prefix:  "[~] ",
 		label:   "Activity in progress",
 		width:   40,
@@ -49,17 +49,17 @@ func NewProgress() *Progress {
 }
 
 // --- Configuration ---------------------------------------
-func (pr *Progress) WithTheme(theme Theme) *Progress           { pr.theme = &theme; return pr }
-func (pr *Progress) WithStyle(style Style) *Progress           { pr.style = &style; return pr }
-func (pr *Progress) WithPrefix(px string) *Progress            { pr.prefix = px; return pr }
-func (pr *Progress) WithLabel(lbl string) *Progress            { pr.label = lbl; return pr }
-func (pr *Progress) WithDescription(desc string) *Progress     { pr.description = desc; return pr }
-func (pr *Progress) WithWidth(width int) *Progress             { pr.width = max(0, width); return pr }
-func (pr *Progress) WithSteps(steps int) *Progress             { pr.steps = max(0, steps); return pr }
-func (pr *Progress) WithPattern(ptn ProgressPattern) *Progress { pr.pattern = ptn; return pr }
+func (pr *progress) WithTheme(theme Theme) *progress           { pr.theme = &theme; return pr }
+func (pr *progress) WithStyle(style Style) *progress           { pr.style = &style; return pr }
+func (pr *progress) WithPrefix(px string) *progress            { pr.prefix = px; return pr }
+func (pr *progress) WithLabel(lbl string) *progress            { pr.label = lbl; return pr }
+func (pr *progress) WithDescription(desc string) *progress     { pr.description = desc; return pr }
+func (pr *progress) WithWidth(width int) *progress             { pr.width = max(0, width); return pr }
+func (pr *progress) WithSteps(steps int) *progress             { pr.steps = max(0, steps); return pr }
+func (pr *progress) WithPattern(ptn ProgressPattern) *progress { pr.pattern = ptn; return pr }
 
 // --- Presentation ----------------------------------------
-func (pr *Progress) Start() {
+func (pr *progress) Start() {
 	// Sanity check for no steps or no label
 	if pr.steps <= 0 || pr.label == "" {
 		return
@@ -157,13 +157,13 @@ func (pr *Progress) Start() {
 }
 
 // Trigger stop of the progress bar
-func (pr *Progress) Stop() {
+func (pr *progress) Stop() {
 	pr.stop = true
 	pr.wg.Wait()
 }
 
 // Increment the progress bar by one step
-func (pr *Progress) Increment() {
+func (pr *progress) Increment() {
 	pr.mu.Lock()
 	defer pr.mu.Unlock()
 

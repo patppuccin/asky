@@ -7,15 +7,15 @@ import (
 )
 
 // --- Definitions -----------------------------------------
-type Alignment int
+type alignment int
 
 const (
-	AlignLeft Alignment = iota
+	AlignLeft alignment = iota
 	AlignCenter
 	AlignRight
 )
 
-type Banner struct {
+type banner struct {
 	theme           *Theme
 	style           *Style
 	label           string
@@ -25,12 +25,12 @@ type Banner struct {
 	subLabelOffset  int
 	subLabelPadChar string
 	width           int
-	alignment       Alignment
+	alignment       alignment
 }
 
 // --- Initialization --------------------------------------
-func NewBanner() Banner {
-	return Banner{
+func NewBanner() *banner {
+	return &banner{
 		label:           "",
 		labelOffset:     0,
 		labelPadChar:    " ",
@@ -42,11 +42,11 @@ func NewBanner() Banner {
 }
 
 // --- Configuration ---------------------------------------
-func (bn Banner) WithTheme(theme Theme) Banner      { bn.theme = &theme; return bn }
-func (bn Banner) WithStyle(style Style) Banner      { bn.style = &style; return bn }
-func (bn Banner) WithLabel(label string) Banner     { bn.label = label; return bn }
-func (bn Banner) WithLabelOffset(offset int) Banner { bn.labelOffset = max(0, offset); return bn }
-func (bn Banner) WithLabelPadChar(padChar string) Banner {
+func (bn banner) WithTheme(theme Theme) banner      { bn.theme = &theme; return bn }
+func (bn banner) WithStyle(style Style) banner      { bn.style = &style; return bn }
+func (bn banner) WithLabel(label string) banner     { bn.label = label; return bn }
+func (bn banner) WithLabelOffset(offset int) banner { bn.labelOffset = max(0, offset); return bn }
+func (bn banner) WithLabelPadChar(padChar string) banner {
 	if runewidth.StringWidth(padChar) < 1 {
 		bn.labelPadChar = " "
 	} else {
@@ -54,9 +54,9 @@ func (bn Banner) WithLabelPadChar(padChar string) Banner {
 	}
 	return bn
 }
-func (bn Banner) WithSubLabel(subLabel string) Banner  { bn.subLabel = subLabel; return bn }
-func (bn Banner) WithSubLabelOffset(offset int) Banner { bn.subLabelOffset = max(0, offset); return bn }
-func (bn Banner) WithSubLabelPadChar(padChar string) Banner {
+func (bn banner) WithSubLabel(subLabel string) banner  { bn.subLabel = subLabel; return bn }
+func (bn banner) WithSubLabelOffset(offset int) banner { bn.subLabelOffset = max(0, offset); return bn }
+func (bn banner) WithSubLabelPadChar(padChar string) banner {
 	if runewidth.StringWidth(padChar) < 1 {
 		bn.subLabelPadChar = " "
 	} else {
@@ -64,11 +64,11 @@ func (bn Banner) WithSubLabelPadChar(padChar string) Banner {
 	}
 	return bn
 }
-func (bn Banner) WithWidth(width int) Banner               { bn.width = min(0, width); return bn }
-func (bn Banner) WithAlignment(alignment Alignment) Banner { bn.alignment = alignment; return bn }
+func (bn banner) WithWidth(width int) banner               { bn.width = min(0, width); return bn }
+func (bn banner) WithAlignment(alignment alignment) banner { bn.alignment = alignment; return bn }
 
 // --- Presentation ----------------------------------------
-func (bn Banner) Render() {
+func (bn banner) Render() {
 	// Sanity check to skip render if both label and subLabel are empty
 	if bn.label == "" && bn.subLabel == "" {
 		return
@@ -118,7 +118,7 @@ func repeatPadChar(padChar string, padWidth int) string {
 	return result
 }
 
-func padLine(padStyle *attribs, contentStyle *attribs, content string, alignment Alignment, padChar string, offset int) string {
+func padLine(padStyle *attribs, contentStyle *attribs, content string, alignment alignment, padChar string, offset int) string {
 	// Get the terminal width
 	termWidth, _, err := getTermDimensions()
 	if err != nil || termWidth <= 0 {

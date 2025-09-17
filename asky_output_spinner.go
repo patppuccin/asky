@@ -19,7 +19,7 @@ var SpinnerPatternPipes = []string{"╾ ", "│ ", "╸ ", "┤ ", "├ ", "└ 
 var SpinnerPatternMoons = []string{"🌑 ", "🌒 ", "🌓 ", "🌔 ", "🌕 ", "🌖 ", "🌗 ", "🌘 "}
 
 // --- Definition ------------------------------------------
-type Spinner struct {
+type spinner struct {
 	theme       *Theme
 	style       *Style
 	frames      []string
@@ -30,22 +30,22 @@ type Spinner struct {
 }
 
 // --- Initiation ------------------------------------------
-func NewSpinner() *Spinner {
-	return &Spinner{
+func NewSpinner() *spinner {
+	return &spinner{
 		label:  "Loading...",
 		frames: SpinnerPatternDefault,
 	}
 }
 
 // Configuration -------------------------------------------
-func (sp *Spinner) WithTheme(theme Theme) *Spinner      { sp.theme = &theme; return sp }
-func (sp *Spinner) WithStyle(style Style) *Spinner      { sp.style = &style; return sp }
-func (sp *Spinner) WithFrames(frames []string) *Spinner { sp.frames = frames; return sp }
-func (sp *Spinner) WithLabel(txt string) *Spinner       { sp.label = txt; return sp }
-func (sp *Spinner) WithDescription(txt string) *Spinner { sp.description = txt; return sp }
+func (sp *spinner) WithTheme(theme Theme) *spinner      { sp.theme = &theme; return sp }
+func (sp *spinner) WithStyle(style Style) *spinner      { sp.style = &style; return sp }
+func (sp *spinner) WithFrames(frames []string) *spinner { sp.frames = frames; return sp }
+func (sp *spinner) WithLabel(txt string) *spinner       { sp.label = txt; return sp }
+func (sp *spinner) WithDescription(txt string) *spinner { sp.description = txt; return sp }
 
 // Presentation --------------------------------------------
-func (sp *Spinner) Start() {
+func (sp *spinner) Start() {
 	// Sanity check to skip render if both label and prefix are empty
 	if sp.label == "" && len(sp.frames) == 0 {
 		return
@@ -93,7 +93,7 @@ func (sp *Spinner) Start() {
 	})
 }
 
-func (sp *Spinner) Stop() {
+func (sp *spinner) Stop() {
 	// Stop the spinner & wait for the render loop to exit
 	sp.stop = true
 	sp.wg.Wait()

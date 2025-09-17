@@ -1,27 +1,27 @@
 package asky
 
 // --- Definition -----------------------------------------
-type StatusLevel int
+type statusLevel int
 
 const (
-	StatusLevelDebug StatusLevel = iota
+	StatusLevelDebug statusLevel = iota
 	StatusLevelSuccess
 	StatusLevelInfo
 	StatusLevelWarn
 	StatusLevelError
 )
 
-type Status struct {
+type status struct {
 	theme  *Theme
 	style  *Style
 	prefix string
 	label  string
-	level  StatusLevel
+	level  statusLevel
 }
 
 // --- Initialization --------------------------------------
-func NewStatus() Status {
-	return Status{
+func NewStatus() *status {
+	return &status{
 		prefix: "",
 		label:  "",
 		level:  StatusLevelDebug,
@@ -29,21 +29,21 @@ func NewStatus() Status {
 }
 
 // --- Configuration ---------------------------------------
-func (st Status) WithTheme(theme Theme) Status       { st.theme = &theme; return st }
-func (st Status) WithStyle(style Style) Status       { st.style = &style; return st }
-func (st Status) WithPrefix(prefix string) Status    { st.prefix = prefix; return st }
-func (st Status) WithLabel(label string) Status      { st.label = label; return st }
-func (st Status) WithLevel(level StatusLevel) Status { st.level = level; return st }
+func (st status) WithTheme(theme Theme) status       { st.theme = &theme; return st }
+func (st status) WithStyle(style Style) status       { st.style = &style; return st }
+func (st status) WithPrefix(prefix string) status    { st.prefix = prefix; return st }
+func (st status) WithLabel(label string) status      { st.label = label; return st }
+func (st status) WithLevel(level statusLevel) status { st.level = level; return st }
 
 // --- Presentation ----------------------------------------
-func (st Status) getPrefix(px string) string {
+func (st status) getPrefix(px string) string {
 	if st.prefix == "" {
 		return px
 	}
 	return st.prefix
 }
 
-func (st Status) Render() {
+func (st status) Render() {
 	// Sanity check to skip render if both label and prefix are empty
 	if st.label == "" && st.prefix == "" {
 		return
