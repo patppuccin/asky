@@ -30,7 +30,7 @@ type StyleMap struct {
 	LogWarnLabel     *color.Color
 	LogErrorPrefix   *color.Color
 	LogErrorLabel    *color.Color
-	LogBlockBody     *color.Color
+	LogGroupBody     *color.Color
 
 	// Input prompt styles.
 	InputDesc           *color.Color
@@ -101,7 +101,7 @@ func NewStyles() *StyleMap {
 		LogWarnLabel:     color.New(color.Reset),
 		LogErrorPrefix:   color.New(color.FgRed),
 		LogErrorLabel:    color.New(color.Reset),
-		LogBlockBody:     color.New(color.Reset),
+		LogGroupBody:     color.New(color.Reset),
 
 		// Input prompts
 		InputDesc:           color.New(color.FgHiBlue),

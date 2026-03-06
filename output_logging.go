@@ -121,6 +121,6 @@ func (l *logGroup) render(pfxStyle, labelStyle *color.Color, defaultPfx, title s
 	titleStr := safeStyle(labelStyle).Sprint(title)
 	stdOutput.Write([]byte(pfx + " " + titleStr + "\n"))
 	for _, msg := range msgs {
-		stdOutput.Write([]byte("  " + safeStyle(l.cfg.Styles.LogBlockBody).Sprint(msg) + "\n"))
+		stdOutput.Write([]byte("  " + safeStyle(l.cfg.Styles.LogGroupBody).Sprint(msg) + "\n"))
 	}
 }
