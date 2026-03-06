@@ -5,6 +5,7 @@ import (
 	"os"
 	"strconv"
 
+	"github.com/fatih/color"
 	"golang.org/x/term"
 )
 
@@ -65,4 +66,13 @@ func reserveLines(lines int) error {
 	}
 	ansiCursorUp(lines)
 	return nil
+}
+
+// safeStyle returns s if non-nil, otherwise a no-op Reset style.
+// Guards against nil fields on a partially constructed [StyleMap].
+func safeStyle(s *color.Color) *color.Color {
+	if s != nil {
+		return s
+	}
+	return color.New(color.Reset)
 }
