@@ -76,3 +76,11 @@ func safeStyle(s *color.Color) *color.Color {
 	}
 	return color.New(color.Reset)
 }
+
+// pick returns val if non-empty, otherwise fallback.
+func pick(val, fallback string) string {
+	if val != "" {
+		return val
+	}
+	return fallback
+}
