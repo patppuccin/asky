@@ -71,7 +71,6 @@ type StyleMap struct {
 	// Spinner styles.
 	SpinnerPrefix *color.Color
 	SpinnerLabel  *color.Color
-	SpinnerDesc   *color.Color
 
 	// Progress bar styles.
 	ProgressPrefix     *color.Color
@@ -140,9 +139,8 @@ func NewStyles() *StyleMap {
 		SelectionDisabledItemLabel:  color.New(color.FgHiBlack, color.CrossedOut),
 
 		// Spinners
-		SpinnerPrefix: color.New(color.FgMagenta, color.Bold),
-		SpinnerLabel:  color.New(color.FgHiMagenta),
-		SpinnerDesc:   color.New(color.FgHiBlue),
+		SpinnerPrefix: color.New(color.FgYellow, color.Bold),
+		SpinnerLabel:  color.New(color.Reset),
 
 		// Progress bars
 		ProgressPrefix:     color.New(color.FgMagenta, color.Bold),
