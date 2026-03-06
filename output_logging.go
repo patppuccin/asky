@@ -2,61 +2,61 @@ package asky
 
 import "github.com/fatih/color"
 
-// ==== Log Message ===========================================================+
+// ==== Log Message ============================================================
 
-// logMessage prints a single styled log line with a level prefix.
-// Construct one with [LogMessage].
-type logMessage struct {
+// log prints a single styled log line with a level prefix.
+// Construct one with [Log].
+type log struct {
 	cfg    Config
 	prefix string
 }
 
-// LogMessage returns a builder for printing a single styled log line.
+// Log returns a builder for printing a single styled log line.
 //
-//	asky.LogMessage().Info("server started")
-//	asky.LogMessage().WithPrefix("(done)").Success("deployment complete")
-func LogMessage() *logMessage {
-	return &logMessage{cfg: pkgConfig}
+//	asky.Log().Info("server started")
+//	asky.Log().WithPrefix("(done)").Success("deployment complete")
+func Log() *log {
+	return &log{cfg: pkgConfig}
 }
 
 // WithStyles overrides the [StyleMap] for this message.
-func (l *logMessage) WithStyles(s *StyleMap) *logMessage {
+func (l *log) WithStyles(s *StyleMap) *log {
 	l.cfg.Styles = s
 	return l
 }
 
 // WithPrefix overrides the default level prefix symbol.
-func (l *logMessage) WithPrefix(p string) *logMessage {
+func (l *log) WithPrefix(p string) *log {
 	l.prefix = p
 	return l
 }
 
 // Success prints a success message.
-func (l *logMessage) Success(msg string) {
+func (l *log) Success(msg string) {
 	l.render(l.cfg.Styles.LogSuccessPrefix, l.cfg.Styles.LogSuccessLabel, "(✓)", msg)
 }
 
 // Debug prints a debug message.
-func (l *logMessage) Debug(msg string) {
+func (l *log) Debug(msg string) {
 	l.render(l.cfg.Styles.LogDebugPrefix, l.cfg.Styles.LogDebugLabel, "(~)", msg)
 }
 
 // Info prints an info message.
-func (l *logMessage) Info(msg string) {
+func (l *log) Info(msg string) {
 	l.render(l.cfg.Styles.LogInfoPrefix, l.cfg.Styles.LogInfoLabel, "(i)", msg)
 }
 
 // Warn prints a warning message.
-func (l *logMessage) Warn(msg string) {
+func (l *log) Warn(msg string) {
 	l.render(l.cfg.Styles.LogWarnPrefix, l.cfg.Styles.LogWarnLabel, "(!)", msg)
 }
 
 // Error prints an error message.
-func (l *logMessage) Error(msg string) {
+func (l *log) Error(msg string) {
 	l.render(l.cfg.Styles.LogErrorPrefix, l.cfg.Styles.LogErrorLabel, "(✗)", msg)
 }
 
-func (l *logMessage) render(pfxStyle, labelStyle *color.Color, defaultPfx, msg string) {
+func (l *log) render(pfxStyle, labelStyle *color.Color, defaultPfx, msg string) {
 	pfx := safeStyle(pfxStyle).Sprint(pick(l.prefix, defaultPfx))
 	label := safeStyle(labelStyle).Sprint(msg)
 	stdOutput.Write([]byte(pfx + " " + label + "\n"))
