@@ -13,10 +13,10 @@ var stdOutput = colorable.NewColorableStdout()
 // Every field is a [*color.Color] from the fatih/color package — assign
 // any value constructed with [color.New] to override a specific style.
 //
-// Use [DefaultStyles] to get a ready-to-use StyleMap, then override
-// individual fields as needed:
+// As a good practice, always obtain a StyleMap via [NewStyles] — do not
+// construct it directly. Unset fields will be unstyled at runtime.
 //
-//	styles := asky.DefaultStyles()
+//	styles := asky.NewStyles()
 //	styles.InputPrefix = color.New(color.FgMagenta, color.Bold)
 type StyleMap struct {
 	// Log message styles.
@@ -83,12 +83,12 @@ type StyleMap struct {
 	ProgressBarStatus  *color.Color
 }
 
-// DefaultStyles returns a [StyleMap] with sensible default colors.
+// NewStyles returns a [StyleMap] with sensible default colors.
 //
 // The palette uses sharp and distinctive colors with semantic states
 // such as green for success, yellow for warnings, red for errors,
 // blue for info, and dark gray for muted/dimmed elements.
-func DefaultStyles() *StyleMap {
+func NewStyles() *StyleMap {
 	return &StyleMap{
 		// Log messages
 		LogSuccessPrefix: color.New(color.FgGreen),
