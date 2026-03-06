@@ -75,7 +75,6 @@ type StyleMap struct {
 	// Progress bar styles.
 	ProgressPrefix     *color.Color
 	ProgressLabel      *color.Color
-	ProgressDesc       *color.Color
 	ProgressBarPad     *color.Color
 	ProgressBarDone    *color.Color
 	ProgressBarPending *color.Color
@@ -143,12 +142,11 @@ func NewStyles() *StyleMap {
 		SpinnerLabel:  color.New(color.Reset),
 
 		// Progress bars
-		ProgressPrefix:     color.New(color.FgMagenta, color.Bold),
-		ProgressLabel:      color.New(color.FgHiMagenta),
-		ProgressDesc:       color.New(color.FgHiBlue),
-		ProgressBarPad:     color.New(color.FgHiMagenta),
-		ProgressBarDone:    color.New(color.FgGreen),
-		ProgressBarPending: color.New(color.FgYellow),
-		ProgressBarStatus:  color.New(color.FgHiMagenta),
+		ProgressPrefix:     color.New(color.FgYellow, color.Bold),
+		ProgressLabel:      color.New(color.Reset),
+		ProgressBarPad:     color.New(color.FgYellow),
+		ProgressBarDone:    color.New(color.FgYellow),
+		ProgressBarPending: color.New(color.FgHiBlack),
+		ProgressBarStatus:  color.New(color.Reset),
 	}
 }
