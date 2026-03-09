@@ -33,7 +33,6 @@ type StyleMap struct {
 	LogGroupBody     *color.Color
 
 	// Input prompt styles.
-	InputDesc           *color.Color
 	InputPrefix         *color.Color
 	InputLabel          *color.Color
 	InputPlaceholder    *color.Color
@@ -102,9 +101,8 @@ func NewStyles() *StyleMap {
 		LogGroupBody:     color.New(color.Reset),
 
 		// Input prompts
-		InputDesc:           color.New(color.FgHiBlue),
-		InputPrefix:         color.New(color.FgMagenta, color.Bold),
-		InputLabel:          color.New(color.FgHiMagenta),
+		InputPrefix:         color.New(color.FgYellow, color.Bold),
+		InputLabel:          color.New(color.Reset),
 		InputPlaceholder:    color.New(color.FgHiBlack),
 		InputText:           color.New(color.Reset),
 		InputValidationPass: color.New(color.FgGreen),

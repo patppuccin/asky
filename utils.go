@@ -2,8 +2,11 @@ package asky
 
 import (
 	"errors"
+	"io"
 	"os"
 	"strconv"
+	"strings"
+	"syscall"
 
 	"github.com/fatih/color"
 	"golang.org/x/term"
@@ -83,4 +86,16 @@ func pick(val, fallback string) string {
 		return val
 	}
 	return fallback
+}
+
+// isInterrupt reports whether err represents a user cancellation.
+// Covers io.EOF from bufio, syscall.EINTR from term on Unix,
+// and interrupted system call errors on Windows.
+func isInterrupt(err error) bool {
+	if err == nil {
+		return false
+	}
+	return errors.Is(err, io.EOF) ||
+		errors.Is(err, syscall.EINTR) ||
+		strings.Contains(err.Error(), "interrupted")
 }
