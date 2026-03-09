@@ -42,12 +42,9 @@ type StyleMap struct {
 	InputHelp           *color.Color
 
 	// Confirmation prompt styles.
-	ConfirmationPrefix         *color.Color
-	ConfirmationLabel          *color.Color
-	ConfirmationDesc           *color.Color
-	ConfirmationHelp           *color.Color
-	ConfirmationSelectedItem   *color.Color
-	ConfirmationUnselectedItem *color.Color
+	ConfirmationPrefix *color.Color
+	ConfirmationLabel  *color.Color
+	ConfirmationHelp   *color.Color
 
 	// Selection prompt styles.
 	SelectionPrefix             *color.Color
@@ -110,12 +107,9 @@ func NewStyles() *StyleMap {
 		InputHelp:           color.New(color.FgHiBlack),
 
 		// Confirmation prompts
-		ConfirmationPrefix:         color.New(color.FgMagenta, color.Bold),
-		ConfirmationLabel:          color.New(color.FgHiMagenta),
-		ConfirmationDesc:           color.New(color.FgHiBlue),
-		ConfirmationHelp:           color.New(color.FgHiBlack),
-		ConfirmationSelectedItem:   color.New(color.FgBlack, color.BgMagenta),
-		ConfirmationUnselectedItem: color.New(color.FgMagenta),
+		ConfirmationPrefix: color.New(color.FgYellow, color.Bold),
+		ConfirmationLabel:  color.New(color.Reset),
+		ConfirmationHelp:   color.New(color.FgHiBlack),
 
 		// Selection prompts
 		SelectionPrefix:             color.New(color.FgMagenta, color.Bold),
