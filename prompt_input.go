@@ -7,9 +7,17 @@ import (
 	"strings"
 	"syscall"
 
-	"atomicgo.dev/keyboard"
-	"atomicgo.dev/keyboard/keys"
+	"github.com/mattn/go-runewidth"
 	"golang.org/x/term"
+)
+
+// echoMode controls how typed characters are displayed during input.
+type echoMode uint8
+
+const (
+	echoNormal echoMode = iota // characters echoed as-is
+	echoMask                   // characters echoed as *
+	echoSilent                 // nothing echoed
 )
 
 // input renders an interactive single-line text prompt.
@@ -20,8 +28,7 @@ type input struct {
 	label        string
 	placeholder  string
 	defaultValue string
-	secret       bool
-	silent       bool
+	echo         echoMode
 	validator    func(string) (string, bool)
 }
 
@@ -33,6 +40,7 @@ func Input() *input {
 	return &input{
 		cfg:   pkgConfig,
 		label: "Enter value",
+		echo:  echoNormal,
 	}
 }
 
@@ -42,18 +50,17 @@ func Input() *input {
 //	pass, err := asky.InputSecret().WithLabel("Password").Render()
 func InputSecret() *input {
 	i := Input()
-	i.secret = true
+	i.echo = echoMask
 	return i
 }
 
 // InputSilent returns a builder for a completely silent prompt.
-// Nothing is echoed as the user types
-// The cursor position is not exposed as well.
+// Nothing is echoed as the user types and cursor position is not exposed.
 //
 //	pass, err := asky.InputSilent().WithLabel("Password").Render()
 func InputSilent() *input {
 	i := Input()
-	i.silent = true
+	i.echo = echoSilent
 	return i
 }
 
@@ -88,7 +95,7 @@ func (i *input) WithDefaultValue(v string) *input {
 }
 
 // WithValidator sets a validation function called on every keystroke and on submit.
-// Returns a message and a boolean to block submission (false) or allow (true).
+// Returns a message and false to block submission, or a message and true to allow.
 func (i *input) WithValidator(fn func(string) (string, bool)) *input {
 	i.validator = fn
 	return i
@@ -97,7 +104,7 @@ func (i *input) WithValidator(fn func(string) (string, bool)) *input {
 // Render displays the interactive prompt and blocks until the user submits or
 // cancels. Returns the entered string, or [ErrInterrupted] if Ctrl+C is pressed.
 //
-// In the accessible mode, input is collected line-by-line
+// In accessible mode, input is collected line-by-line.
 // Validation is checked on Enter and the prompt reprints until satisfied.
 func (i *input) Render() (string, error) {
 	if i.cfg.Accessible {
@@ -108,40 +115,31 @@ func (i *input) Render() (string, error) {
 
 // renderAccessible collects input without cursor magic.
 // Plain input echoes characters as typed using bufio.
-// Secret echoes * per character, silent echoes nothing — both use term.ReadPassword.
-// On Enter, validation is checked and the prompt reprints on failure.
+// Secret echoes * per character; silent echoes nothing.
+// Validation is checked on Enter and the prompt reprints on failure.
 func (i *input) renderAccessible() (string, error) {
 	prefix := pick(i.prefix, "(?)")
 	promptLine := safeStyle(i.cfg.Styles.InputPrefix).Sprint(prefix) + " " +
 		safeStyle(i.cfg.Styles.InputLabel).Sprint(i.label)
 
+	placeholderLine := i.buildPlaceholderLine()
+
 	for {
 		stdOutput.Write([]byte(promptLine + "\n"))
-
-		var placeholderLine string
-		switch {
-		case i.placeholder != "" && i.defaultValue != "":
-			placeholderLine = safeStyle(i.cfg.Styles.InputPlaceholder).Sprint(i.placeholder + " (default: " + i.defaultValue + ")")
-		case i.placeholder != "":
-			placeholderLine = safeStyle(i.cfg.Styles.InputPlaceholder).Sprint(i.placeholder)
-		case i.defaultValue != "":
-			placeholderLine = safeStyle(i.cfg.Styles.InputPlaceholder).Sprint("default: " + i.defaultValue)
-		}
 		if placeholderLine != "" {
 			stdOutput.Write([]byte(placeholderLine + "\n"))
 		}
 
 		var result string
 
-		if i.secret || i.silent {
+		if i.echo != echoNormal {
+			sigCh := make(chan os.Signal, 1)
+			signal.Notify(sigCh, os.Interrupt, syscall.SIGTERM)
+
 			type readResult struct {
 				b   []byte
 				err error
 			}
-
-			sigCh := make(chan os.Signal, 1)
-			signal.Notify(sigCh, os.Interrupt, syscall.SIGTERM)
-
 			ch := make(chan readResult, 1)
 			go func() {
 				b, err := term.ReadPassword(int(os.Stdin.Fd()))
@@ -155,9 +153,12 @@ func (i *input) renderAccessible() (string, error) {
 			case r := <-ch:
 				signal.Stop(sigCh)
 				if r.err != nil {
+					if isInterrupt(r.err) {
+						return "", ErrInterrupted
+					}
 					return "", r.err
 				}
-				if i.secret {
+				if i.echo == echoMask {
 					stdOutput.Write([]byte(strings.Repeat("*", len(r.b)) + "\n"))
 				} else {
 					stdOutput.Write([]byte("\n"))
@@ -165,18 +166,16 @@ func (i *input) renderAccessible() (string, error) {
 				result = string(r.b)
 			}
 		} else {
+			sigCh := make(chan os.Signal, 1)
+			signal.Notify(sigCh, os.Interrupt, syscall.SIGTERM)
+
 			type readResult struct {
 				line string
 				err  error
 			}
-
-			sigCh := make(chan os.Signal, 1)
-			signal.Notify(sigCh, os.Interrupt, syscall.SIGTERM)
-
 			ch := make(chan readResult, 1)
 			go func() {
-				reader := bufio.NewReader(os.Stdin)
-				line, err := reader.ReadString('\n')
+				line, err := bufio.NewReader(os.Stdin).ReadString('\n')
 				ch <- readResult{line, err}
 			}()
 
@@ -196,16 +195,14 @@ func (i *input) renderAccessible() (string, error) {
 			}
 		}
 
-		// Validate input
 		if i.validator != nil {
 			msg, ok := i.validator(result)
 			if !ok {
-				stdOutput.Write([]byte(safeStyle(i.cfg.Styles.InputValidationFail).Sprint(msg) + "\n"))
+				stdOutput.Write([]byte(safeStyle(i.cfg.Styles.InputValidationFail).Sprint(msg) + "\n\n"))
 				continue
 			}
 		}
 
-		// Apply default after validation passes
 		if result == "" && i.defaultValue != "" {
 			result = i.defaultValue
 		}
@@ -223,51 +220,40 @@ func (i *input) renderInteractive() (string, error) {
 	prefix := pick(i.prefix, "(?)")
 	promptLine := safeStyle(i.cfg.Styles.InputPrefix).Sprint(prefix) + " " +
 		safeStyle(i.cfg.Styles.InputLabel).Sprint(i.label)
-
-	var placeholderLine string
-	switch {
-	case i.placeholder != "" && i.defaultValue != "":
-		placeholderLine = safeStyle(i.cfg.Styles.InputPlaceholder).Sprint(i.placeholder + " (default: " + i.defaultValue + ")")
-	case i.placeholder != "":
-		placeholderLine = safeStyle(i.cfg.Styles.InputPlaceholder).Sprint(i.placeholder)
-	case i.defaultValue != "":
-		placeholderLine = safeStyle(i.cfg.Styles.InputPlaceholder).Sprint("default: " + i.defaultValue)
-	}
-
-	helpLine := safeStyle(i.cfg.Styles.InputHelp).Sprint("enter (confirm) | ctrl+c (cancel)")
+	placeholderLine := i.buildPlaceholderLine()
+	helpLine := safeStyle(i.cfg.Styles.InputHelp).Sprint("enter to confirm  •  ctrl+c to cancel")
 
 	var inBuf []rune
 	cursorPos := 0
 	interrupted := false
 	receivedInput := false
 
-	// displayBuf returns the string to render based on mode.
+	// displayBuf returns the string to render based on echo mode.
 	displayBuf := func() string {
-		switch {
-		case i.silent:
-			return ""
-		case i.secret:
+		switch i.echo {
+		case echoMask:
 			return strings.Repeat("*", len(inBuf))
+		case echoSilent:
+			return ""
 		default:
 			return string(inBuf)
 		}
 	}
 
+	// redraws prompt and input line, then repositions the cursor on the input.
 	redraw := func(validationMsg string, validOK *bool) {
-		stdOutput.Write([]byte(ansiHideCursor + ansiRestoreCursor + ansiClearLine))
-
-		// Prompt + input line
-		stdOutput.Write([]byte("\r" + promptLine))
+		// Prompt + placeholder + input line
+		stdOutput.Write([]byte(ansiHideCursor + ansiRestoreCursor + "\r" + ansiClearLine + promptLine))
 		if len(inBuf) == 0 {
-			stdOutput.Write([]byte(" " + placeholderLine + ansiClearLine))
+			stdOutput.Write([]byte(" " + placeholderLine))
 		} else {
-			stdOutput.Write([]byte(" " + safeStyle(i.cfg.Styles.InputText).Sprint(displayBuf()) + ansiClearLine))
+			stdOutput.Write([]byte(" " + safeStyle(i.cfg.Styles.InputText).Sprint(displayBuf())))
 		}
 
-		// Empty line before validation
+		// Spacer Line
 		stdOutput.Write([]byte("\n\r" + ansiClearLine))
 
-		// Validation line
+		// Validation Line
 		stdOutput.Write([]byte("\n\r" + ansiClearLine))
 		if i.validator != nil && validationMsg != "" && receivedInput {
 			if validOK != nil && !*validOK {
@@ -277,18 +263,21 @@ func (i *input) renderInteractive() (string, error) {
 			}
 		}
 
-		// Help line
-		stdOutput.Write([]byte("\n\r" + helpLine + ansiClearLine))
+		// Help Line
+		stdOutput.Write([]byte("\n\r" + ansiClearLine + helpLine))
 
 		// Reposition cursor at input line
 		stdOutput.Write([]byte(ansiRestoreCursor + "\r" + promptLine + " "))
 		if len(inBuf) > 0 {
 			stdOutput.Write([]byte(safeStyle(i.cfg.Styles.InputText).Sprint(displayBuf())))
-			// Only reposition cursor for plain input & secret; for don't expose position
-			if !i.secret && cursorPos < len(inBuf) {
-				ansiCursorLeft(len(inBuf) - cursorPos)
+			// Reposition cursor within the input for plain mode only.
+			// Use visual column width (runewidth) so wide chars (CJK, emoji) land correctly.
+			if i.echo == echoNormal && cursorPos < len(inBuf) {
+				afterCols := runewidth.StringWidth(string(inBuf[cursorPos:]))
+				ansiCursorLeft(afterCols)
 			}
 		}
+
 		stdOutput.Write([]byte(ansiShowCursor))
 	}
 
@@ -297,74 +286,96 @@ func (i *input) renderInteractive() (string, error) {
 
 	redraw("", nil)
 
-	err := keyboard.Listen(func(key keys.Key) (stop bool, err error) {
-		receivedInput = true
-
-		switch key.Code {
-		case keys.CtrlC:
+	err := listenKeys(func(ev keyEvent) (stop bool) {
+		switch ev.code {
+		case keyCtrlC:
 			interrupted = true
-			return true, nil
+			return true
 
-		case keys.Enter:
+		case keyEnter:
 			if i.validator != nil {
 				msg, ok := i.validator(string(inBuf))
 				if !ok {
 					redraw(msg, &ok)
-					return false, nil
+					return false
 				}
 			}
 			if len(inBuf) == 0 && i.defaultValue != "" {
 				inBuf = []rune(i.defaultValue)
 			}
-			return true, nil
+			return true
 
-		case keys.Left:
-			if !i.secret && !i.silent && cursorPos > 0 {
+		case keyLeft:
+			if i.echo == echoNormal && cursorPos > 0 {
 				cursorPos--
 			}
 
-		case keys.Right:
-			if !i.secret && !i.silent && cursorPos < len(inBuf) {
+		case keyRight:
+			if i.echo == echoNormal && cursorPos < len(inBuf) {
 				cursorPos++
 			}
 
-		case keys.Backspace:
-			if i.secret || i.silent {
-				// Always delete from end — position not exposed
-				if len(inBuf) > 0 {
-					inBuf = inBuf[:len(inBuf)-1]
-					cursorPos = len(inBuf)
+		case keyHome, keyCtrlHome:
+			if i.echo == echoNormal {
+				cursorPos = 0
+			}
+
+		case keyEnd, keyCtrlEnd:
+			if i.echo == echoNormal {
+				cursorPos = len(inBuf)
+			}
+
+		case keyCtrlLeft:
+			if i.echo == echoNormal && cursorPos > 0 {
+				cursorPos--
+				for cursorPos > 0 && inBuf[cursorPos-1] == ' ' {
+					cursorPos--
 				}
-			} else {
-				if cursorPos > 0 {
-					inBuf = append(inBuf[:cursorPos-1], inBuf[cursorPos:]...)
+				for cursorPos > 0 && inBuf[cursorPos-1] != ' ' {
 					cursorPos--
 				}
 			}
 
-		case keys.Delete:
-			if !i.secret && !i.silent && cursorPos < len(inBuf) {
+		case keyCtrlRight:
+			if i.echo == echoNormal && cursorPos < len(inBuf) {
+				for cursorPos < len(inBuf) && inBuf[cursorPos] == ' ' {
+					cursorPos++
+				}
+				for cursorPos < len(inBuf) && inBuf[cursorPos] != ' ' {
+					cursorPos++
+				}
+			}
+
+		case keyBackspace:
+			if i.echo != echoNormal {
+				if len(inBuf) > 0 {
+					inBuf = inBuf[:len(inBuf)-1]
+					cursorPos = len(inBuf)
+				}
+			} else if cursorPos > 0 {
+				inBuf = append(inBuf[:cursorPos-1], inBuf[cursorPos:]...)
+				cursorPos--
+			}
+
+		case keyDelete:
+			if i.echo == echoNormal && cursorPos < len(inBuf) {
 				inBuf = append(inBuf[:cursorPos], inBuf[cursorPos+1:]...)
 			}
 
-		case keys.Space:
-			inBuf = append(inBuf[:cursorPos], append([]rune{' '}, inBuf[cursorPos:]...)...)
+		case keyRune:
+			inBuf = append(inBuf[:cursorPos], append([]rune{ev.r}, inBuf[cursorPos:]...)...)
 			cursorPos++
-
-		case keys.RuneKey:
-			if len(key.Runes) > 0 {
-				inBuf = append(inBuf[:cursorPos], append([]rune{key.Runes[0]}, inBuf[cursorPos:]...)...)
-				cursorPos++
-			}
 		}
 
-		if i.validator != nil && receivedInput {
+		receivedInput = true
+
+		if i.validator != nil {
 			msg, ok := i.validator(string(inBuf))
 			redraw(msg, &ok)
 		} else {
 			redraw("", nil)
 		}
-		return false, nil
+		return false
 	})
 
 	if err != nil {
@@ -375,4 +386,19 @@ func (i *input) renderInteractive() (string, error) {
 	}
 
 	return strings.TrimRight(string(inBuf), "\r\n"), nil
+}
+
+// buildPlaceholderLine composes the styled placeholder string from the prompt's
+// placeholder and defaultValue fields. Returns empty string if neither is set.
+func (i *input) buildPlaceholderLine() string {
+	switch {
+	case i.placeholder != "" && i.defaultValue != "":
+		return safeStyle(i.cfg.Styles.InputPlaceholder).Sprint(i.placeholder + " (default: " + i.defaultValue + ")")
+	case i.placeholder != "":
+		return safeStyle(i.cfg.Styles.InputPlaceholder).Sprint(i.placeholder)
+	case i.defaultValue != "":
+		return safeStyle(i.cfg.Styles.InputPlaceholder).Sprint("default: " + i.defaultValue)
+	default:
+		return ""
+	}
 }
