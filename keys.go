@@ -13,6 +13,8 @@ type keyCode int
 
 const (
 	keyRune      keyCode = iota // printable character
+	keyTab                      // \x09
+	keySpace                    // \x20
 	keyEnter                    // \r or \n
 	keyBackspace                // \x7f or \x08
 	keyDelete                   // \x1b[3~
@@ -207,6 +209,10 @@ func parseSingleOrUTF8(first byte, r *bufio.Reader) (keyEvent, error) {
 		return keyEvent{code: keyEnter}, nil
 	case 0x7f, 0x08:
 		return keyEvent{code: keyBackspace}, nil
+	case 0x09:
+		return keyEvent{code: keyTab}, nil
+	case 0x20:
+		return keyEvent{code: keySpace}, nil
 	}
 
 	// Printable ASCII.
