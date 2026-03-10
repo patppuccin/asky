@@ -12,6 +12,13 @@ import (
 	"golang.org/x/term"
 )
 
+// Choice represents a single selectable item in a [Select] or [MultiSelect] prompt.
+type Choice struct {
+	Value    string
+	Label    string
+	Disabled bool
+}
+
 // ErrInterrupted is returned when the user interrupts a prompt (e.g. Ctrl+C).
 var ErrInterrupted = errors.New("prompt interrupted")
 

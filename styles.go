@@ -52,17 +52,18 @@ type StyleMap struct {
 	SelectionDesc               *color.Color
 	SelectionHelp               *color.Color
 	SelectionSearchLabel        *color.Color
+	SelectionSearchText         *color.Color
 	SelectionSearchHint         *color.Color
 	SelectionValidationPass     *color.Color
 	SelectionValidationFail     *color.Color
-	SelectionListItemHeader     *color.Color
-	SelectionListItemLabel      *color.Color
-	SelectionCurrentItemMarker  *color.Color
-	SelectionCurrentItemLabel   *color.Color
-	SelectionSelectedItemMarker *color.Color
-	SelectionSelectedItemLabel  *color.Color
-	SelectionDisabledItemMarker *color.Color
-	SelectionDisabledItemLabel  *color.Color
+	SelectionItemNormalMarker   *color.Color
+	SelectionItemNormalLabel    *color.Color
+	SelectionItemCurrentMarker  *color.Color
+	SelectionItemCurrentLabel   *color.Color
+	SelectionItemSelectedMarker *color.Color
+	SelectionItemSelectedLabel  *color.Color
+	SelectionItemDisabledMarker *color.Color
+	SelectionItemDisabledLabel  *color.Color
 
 	// Spinner styles.
 	SpinnerPrefix *color.Color
@@ -112,22 +113,22 @@ func NewStyles() *StyleMap {
 		ConfirmationHelp:   color.New(color.FgHiBlack),
 
 		// Selection prompts
-		SelectionPrefix:             color.New(color.FgMagenta, color.Bold),
-		SelectionLabel:              color.New(color.FgHiMagenta),
-		SelectionDesc:               color.New(color.FgHiBlue),
+		SelectionPrefix:             color.New(color.FgYellow, color.Bold),
+		SelectionLabel:              color.New(color.Reset),
 		SelectionHelp:               color.New(color.FgHiBlack),
-		SelectionSearchLabel:        color.New(color.FgMagenta, color.Bold),
+		SelectionSearchLabel:        color.New(color.FgYellow, color.Bold),
+		SelectionSearchText:         color.New(color.Reset),
 		SelectionSearchHint:         color.New(color.FgHiBlack),
 		SelectionValidationPass:     color.New(color.FgGreen),
 		SelectionValidationFail:     color.New(color.FgRed),
-		SelectionListItemHeader:     color.New(color.FgMagenta, color.Bold),
-		SelectionListItemLabel:      color.New(color.Reset),
-		SelectionCurrentItemMarker:  color.New(color.FgMagenta, color.Bold),
-		SelectionCurrentItemLabel:   color.New(color.FgHiMagenta),
-		SelectionSelectedItemMarker: color.New(color.FgGreen),
-		SelectionSelectedItemLabel:  color.New(color.FgGreen),
-		SelectionDisabledItemMarker: color.New(color.FgHiBlack),
-		SelectionDisabledItemLabel:  color.New(color.FgHiBlack, color.CrossedOut),
+		SelectionItemNormalMarker:   color.New(color.Reset),
+		SelectionItemNormalLabel:    color.New(color.Reset),
+		SelectionItemCurrentMarker:  color.New(color.FgYellow, color.Bold),
+		SelectionItemCurrentLabel:   color.New(color.FgHiYellow),
+		SelectionItemSelectedMarker: color.New(color.FgGreen),
+		SelectionItemSelectedLabel:  color.New(color.FgGreen),
+		SelectionItemDisabledMarker: color.New(color.FgHiBlack),
+		SelectionItemDisabledLabel:  color.New(color.FgHiBlack, color.CrossedOut),
 
 		// Spinners
 		SpinnerPrefix: color.New(color.FgYellow, color.Bold),
