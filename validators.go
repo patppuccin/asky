@@ -17,11 +17,12 @@ import (
 
 // ValidateInputChain combines multiple input validators into one.
 // Validators are run in order — the first failure stops the chain.
+// If no validators are provided, the chain will always pass.
 //
 //	asky.Input().WithValidator(asky.ValidateInputChain(
 //	    asky.ValidateInputRequired(),
 //	    asky.ValidateInputMinMaxLength(3, 50),
-//	    asky.ValidateInputAlphanumeric(),
+//	    asky.ValidateInputASCIIAlphanumeric(),
 //	))
 func ValidateInputChain(validators ...func(string) (string, bool)) func(string) (string, bool) {
 	return func(s string) (string, bool) {
@@ -45,6 +46,8 @@ func ValidateInputRequired() func(string) (string, bool) {
 }
 
 // ValidateInputMinLength fails if the input is shorter than n characters.
+// Length is measured in Unicode code points, not bytes.
+// If n is zero, the validator will always pass.
 func ValidateInputMinLength(n int) func(string) (string, bool) {
 	return func(s string) (string, bool) {
 		if len([]rune(s)) < n {
@@ -55,6 +58,8 @@ func ValidateInputMinLength(n int) func(string) (string, bool) {
 }
 
 // ValidateInputMaxLength fails if the input is longer than n characters.
+// Length is measured in Unicode code points, not bytes.
+// If n is zero, the validator will pass on empty input and fail otherwise.
 func ValidateInputMaxLength(n int) func(string) (string, bool) {
 	return func(s string) (string, bool) {
 		if len([]rune(s)) > n {
@@ -65,6 +70,8 @@ func ValidateInputMaxLength(n int) func(string) (string, bool) {
 }
 
 // ValidateInputMinMaxLength fails if the input length is outside the range [min, max].
+// Length is measured in Unicode code points, not bytes.
+// If min is greater than max, the validator will never pass.
 func ValidateInputMinMaxLength(min, max int) func(string) (string, bool) {
 	return func(s string) (string, bool) {
 		l := len([]rune(s))
@@ -76,6 +83,8 @@ func ValidateInputMinMaxLength(min, max int) func(string) (string, bool) {
 }
 
 // ValidateInputEmail fails if the input is not a valid email address.
+// Validation is based on RFC 5322 and accepts formats like "Name <email@example.com>".
+// For strict address-only input, ensure the label does not prompt for display names.
 func ValidateInputEmail() func(string) (string, bool) {
 	return func(s string) (string, bool) {
 		if _, err := mail.ParseAddress(s); err != nil {
@@ -86,6 +95,8 @@ func ValidateInputEmail() func(string) (string, bool) {
 }
 
 // ValidateInputURL fails if the input is not a valid URL with a scheme and host.
+// Both scheme and host are required, e.g. "https://example.com".
+// Relative URLs and schemeless inputs like "example.com" are rejected.
 func ValidateInputURL() func(string) (string, bool) {
 	return func(s string) (string, bool) {
 		u, err := url.ParseRequestURI(s)
@@ -96,8 +107,35 @@ func ValidateInputURL() func(string) (string, bool) {
 	}
 }
 
-// ValidateInputNumeric fails if the input contains any non-digit characters.
-func ValidateInputNumeric() func(string) (string, bool) {
+// ValidateInputASCIINumeric fails if the input contains any non-digit characters.
+// Only ASCII digits 0–9 are accepted.
+func ValidateInputASCIINumeric() func(string) (string, bool) {
+	return func(s string) (string, bool) {
+		for _, r := range s {
+			if r < '0' || r > '9' {
+				return "must contain digits only", false
+			}
+		}
+		return "", true
+	}
+}
+
+// ValidateInputASCIIAlphanumeric fails if the input contains any non-alphanumeric characters.
+// Only ASCII letters a–z, A–Z and digits 0–9 are accepted. Accented and non-ASCII letters are rejected.
+func ValidateInputASCIIAlphanumeric() func(string) (string, bool) {
+	return func(s string) (string, bool) {
+		for _, r := range s {
+			if (r < 'a' || r > 'z') && (r < 'A' || r > 'Z') && (r < '0' || r > '9') {
+				return "must contain letters and digits only", false
+			}
+		}
+		return "", true
+	}
+}
+
+// ValidateInputUnicodeNumeric fails if the input contains any non-digit characters.
+// Accepts digits from all Unicode scripts, not just ASCII 0–9.
+func ValidateInputUnicodeNumeric() func(string) (string, bool) {
 	return func(s string) (string, bool) {
 		for _, r := range s {
 			if !unicode.IsDigit(r) {
@@ -108,8 +146,9 @@ func ValidateInputNumeric() func(string) (string, bool) {
 	}
 }
 
-// ValidateInputAlphanumeric fails if the input contains any non-alphanumeric characters.
-func ValidateInputAlphanumeric() func(string) (string, bool) {
+// ValidateInputUnicodeAlphanumeric fails if the input contains any non-alphanumeric characters.
+// Accepts letters and digits from all Unicode scripts including accented characters.
+func ValidateInputUnicodeAlphanumeric() func(string) (string, bool) {
 	return func(s string) (string, bool) {
 		for _, r := range s {
 			if !unicode.IsLetter(r) && !unicode.IsDigit(r) {
@@ -122,6 +161,7 @@ func ValidateInputAlphanumeric() func(string) (string, bool) {
 
 // ValidateInputRegex fails if the input does not match the given regular expression.
 // msg is the error message shown to the user on failure.
+// Panics if pattern is not a valid regular expression.
 func ValidateInputRegex(pattern, msg string) func(string) (string, bool) {
 	re := regexp.MustCompile(pattern)
 	return func(s string) (string, bool) {
@@ -133,6 +173,7 @@ func ValidateInputRegex(pattern, msg string) func(string) (string, bool) {
 }
 
 // ValidateInputMin fails if the input, parsed as a number, is less than n.
+// Non-numeric input is also rejected.
 func ValidateInputMin(n float64) func(string) (string, bool) {
 	return func(s string) (string, bool) {
 		v, err := strconv.ParseFloat(s, 64)
@@ -147,6 +188,7 @@ func ValidateInputMin(n float64) func(string) (string, bool) {
 }
 
 // ValidateInputMax fails if the input, parsed as a number, is greater than n.
+// Non-numeric input is also rejected.
 func ValidateInputMax(n float64) func(string) (string, bool) {
 	return func(s string) (string, bool) {
 		v, err := strconv.ParseFloat(s, 64)
@@ -161,6 +203,7 @@ func ValidateInputMax(n float64) func(string) (string, bool) {
 }
 
 // ValidateInputMinMax fails if the input, parsed as a number, is outside the range [min, max].
+// If min is greater than max, the validator will never pass.
 func ValidateInputMinMax(min, max float64) func(string) (string, bool) {
 	return func(s string) (string, bool) {
 		v, err := strconv.ParseFloat(s, 64)
@@ -175,6 +218,7 @@ func ValidateInputMinMax(min, max float64) func(string) (string, bool) {
 }
 
 // ValidateInputIPAddr fails if the input is not a valid IPv4 or IPv6 address.
+// Both formats are accepted, e.g. "192.168.1.1" or "::1".
 func ValidateInputIPAddr() func(string) (string, bool) {
 	return func(s string) (string, bool) {
 		if net.ParseIP(s) == nil {
@@ -184,7 +228,8 @@ func ValidateInputIPAddr() func(string) (string, bool) {
 	}
 }
 
-// ValidateInputPortNumber fails if the input is not a valid port number (1–65535).
+// ValidateInputPortNumber fails if the input is not a valid port number.
+// Valid range is 1–65535; port 0 is reserved and not accepted.
 func ValidateInputPortNumber() func(string) (string, bool) {
 	return func(s string) (string, bool) {
 		n, err := strconv.Atoi(s)
@@ -195,11 +240,11 @@ func ValidateInputPortNumber() func(string) (string, bool) {
 	}
 }
 
-// ValidateInputNoSpaces fails if the input contains any whitespace characters.
+// ValidateInputNoSpaces fails if the input contains any space characters ( ).
 func ValidateInputNoSpaces() func(string) (string, bool) {
 	return func(s string) (string, bool) {
 		for _, r := range s {
-			if unicode.IsSpace(r) {
+			if r == ' ' {
 				return "must not contain spaces", false
 			}
 		}
@@ -207,7 +252,21 @@ func ValidateInputNoSpaces() func(string) (string, bool) {
 	}
 }
 
+// ValidateInputNoWhitespace fails if the input contains any whitespace characters
+// including spaces, tabs, newlines, and other Unicode whitespace.
+func ValidateInputNoWhitespace() func(string) (string, bool) {
+	return func(s string) (string, bool) {
+		for _, r := range s {
+			if unicode.IsSpace(r) {
+				return "must not contain whitespace", false
+			}
+		}
+		return "", true
+	}
+}
+
 // ValidateInputStartsWith fails if the input does not start with the given prefix.
+// If prefix is empty, the validator will always pass.
 func ValidateInputStartsWith(prefix string) func(string) (string, bool) {
 	return func(s string) (string, bool) {
 		if !strings.HasPrefix(s, prefix) {
@@ -218,6 +277,7 @@ func ValidateInputStartsWith(prefix string) func(string) (string, bool) {
 }
 
 // ValidateInputEndsWith fails if the input does not end with the given suffix.
+// If suffix is empty, the validator will always pass.
 func ValidateInputEndsWith(suffix string) func(string) (string, bool) {
 	return func(s string) (string, bool) {
 		if !strings.HasSuffix(s, suffix) {
@@ -228,6 +288,7 @@ func ValidateInputEndsWith(suffix string) func(string) (string, bool) {
 }
 
 // ValidateInputOneOf fails if the input does not exactly match one of the allowed values.
+// If options is empty, the validator will never pass.
 func ValidateInputOneOf(options ...string) func(string) (string, bool) {
 	return func(s string) (string, bool) {
 		if slices.Contains(options, s) {
@@ -260,7 +321,7 @@ func ValidateInputMatches(other *string) func(string) (string, bool) {
 func ValidateSelectRequired() func(Choice) (string, bool) {
 	return func(c Choice) (string, bool) {
 		if c == (Choice{}) {
-			return "required", false
+			return "selection required", false
 		}
 		return "", true
 	}
@@ -270,6 +331,7 @@ func ValidateSelectRequired() func(Choice) (string, bool) {
 
 // ValidateMultiSelectChain combines multiple MultiSelect validators into one.
 // Validators are run in order — the first failure stops the chain.
+// If no validators are provided, the chain will always pass.
 //
 //	asky.MultiSelect().WithValidator(asky.ValidateMultiSelectChain(
 //	    asky.ValidateMultiSelectRequired(),
@@ -290,38 +352,43 @@ func ValidateMultiSelectChain(validators ...func([]Choice) (string, bool)) func(
 func ValidateMultiSelectRequired() func([]Choice) (string, bool) {
 	return func(choices []Choice) (string, bool) {
 		if len(choices) == 0 {
-			return "required", false
+			return "selection required", false
 		}
 		return "", true
 	}
 }
 
 // ValidateMultiSelectMin fails if fewer than n choices are selected.
+// If n exceeds the number of available choices, the validator will never pass.
+// If n is zero, the validator will always pass.
 func ValidateMultiSelectMin(n int) func([]Choice) (string, bool) {
 	return func(choices []Choice) (string, bool) {
 		if len(choices) < n {
-			return fmt.Sprintf("select at least %d", n), false
+			return fmt.Sprintf("select at least %d %s", n, pluralChoice(n)), false
 		}
 		return "", true
 	}
 }
 
 // ValidateMultiSelectMax fails if more than n choices are selected.
+// If n exceeds the number of available choices, the validator will never fail.
+// If n is zero, the validator will pass on empty selection and fail otherwise.
 func ValidateMultiSelectMax(n int) func([]Choice) (string, bool) {
 	return func(choices []Choice) (string, bool) {
 		if len(choices) > n {
-			return fmt.Sprintf("select at most %d", n), false
+			return fmt.Sprintf("select at most %d %s", n, pluralChoice(n)), false
 		}
 		return "", true
 	}
 }
 
 // ValidateMultiSelectMinMax fails if the number of selected choices is outside [min, max].
+// min must not be greater than max; if it is, the validator will never pass.
 func ValidateMultiSelectMinMax(min, max int) func([]Choice) (string, bool) {
 	return func(choices []Choice) (string, bool) {
 		n := len(choices)
 		if n < min || n > max {
-			return fmt.Sprintf("select between %d and %d", min, max), false
+			return fmt.Sprintf("select between %d and %d %s", min, max, pluralChoice(max)), false
 		}
 		return "", true
 	}
@@ -334,4 +401,12 @@ func formatFloat(f float64) string {
 		return strconv.Itoa(int(f))
 	}
 	return strconv.FormatFloat(f, 'f', -1, 64)
+}
+
+// pluralChoice returns "choice" or "choices" based on the given number.
+func pluralChoice(n int) string {
+	if n == 1 {
+		return "choice"
+	}
+	return "choices"
 }
