@@ -1,6 +1,6 @@
 # ASKY
 
-Simple interactive prompt library for Go.
+Simple prompt library for Go.
 
 ## Overview
 
