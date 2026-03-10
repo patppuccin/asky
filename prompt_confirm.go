@@ -8,9 +8,9 @@ import (
 	"syscall"
 )
 
-// confirmation renders an interactive yes/no prompt.
+// confirm renders an interactive yes/no prompt.
 // Construct one with [Confirm].
-type confirmation struct {
+type confirm struct {
 	cfg        Config
 	prefix     string
 	label      string
@@ -22,34 +22,34 @@ type confirmation struct {
 //	ok, err := asky.Confirm().WithLabel("Continue?").Render()
 //	ok, err := asky.Confirm().WithLabel("Continue?").WithDefault(true).Render()
 //	if errors.Is(err, asky.ErrInterrupted) { ... }
-func Confirm() *confirmation {
-	return &confirmation{
+func Confirm() *confirm {
+	return &confirm{
 		cfg:   pkgConfig,
 		label: "Confirm?",
 	}
 }
 
 // WithStyles overrides the [StyleMap] for this prompt.
-func (c *confirmation) WithStyles(s *StyleMap) *confirmation {
+func (c *confirm) WithStyles(s *StyleMap) *confirm {
 	c.cfg.Styles = s
 	return c
 }
 
 // WithPrefix overrides the default prompt prefix symbol.
-func (c *confirmation) WithPrefix(p string) *confirmation {
+func (c *confirm) WithPrefix(p string) *confirm {
 	c.prefix = p
 	return c
 }
 
 // WithLabel sets the prompt label shown to the user.
-func (c *confirmation) WithLabel(l string) *confirmation {
+func (c *confirm) WithLabel(l string) *confirm {
 	c.label = l
 	return c
 }
 
 // WithDefault pre-selects an option. If not called, the user must explicitly
 // select before confirming.
-func (c *confirmation) WithDefault(v bool) *confirmation {
+func (c *confirm) WithDefault(v bool) *confirm {
 	c.defaultVal = &v
 	return c
 }
@@ -57,7 +57,7 @@ func (c *confirmation) WithDefault(v bool) *confirmation {
 // Render displays the interactive prompt and blocks until the user confirms or
 // cancels. Returns true for yes, false for no, or [ErrInterrupted] if Ctrl+C
 // is pressed.
-func (c *confirmation) Render() (bool, error) {
+func (c *confirm) Render() (bool, error) {
 	if c.cfg.Accessible {
 		return c.renderAccessible()
 	}
@@ -65,7 +65,7 @@ func (c *confirmation) Render() (bool, error) {
 }
 
 // renderAccessible collects a y/n answer without ANSI cursor movement.
-func (c *confirmation) renderAccessible() (bool, error) {
+func (c *confirm) renderAccessible() (bool, error) {
 	prefix := pick(c.prefix, "(?)")
 
 	base := safeStyle(c.cfg.Styles.ConfirmationPrefix).Sprint(prefix) + " " +
@@ -73,7 +73,7 @@ func (c *confirmation) renderAccessible() (bool, error) {
 
 	switch {
 	case c.defaultVal == nil:
-		base += safeStyle(c.cfg.Styles.ConfirmationHelp).Sprint("(Press Y or N)")
+		base += safeStyle(c.cfg.Styles.ConfirmationHelp).Sprint("(type Y or N)")
 	case *c.defaultVal:
 		base += safeStyle(c.cfg.Styles.ConfirmationHelp).Sprint("(Y/n)")
 	default:
@@ -128,9 +128,10 @@ func (c *confirmation) renderAccessible() (bool, error) {
 }
 
 // renderInteractive renders a two-line prompt: label on top with cursor,
-// help below. Y/N keys confirm directly. Cleans up after itself on exit.
-func (c *confirmation) renderInteractive() (bool, error) {
-	if err := reserveLines(2); err != nil {
+// help below. Y/N keys confirm directly and no need to press Enter.
+// Cleans up after itself on exit.
+func (c *confirm) renderInteractive() (bool, error) {
+	if err := reserveLines(3); err != nil {
 		return false, ErrTerminalTooSmall
 	}
 
@@ -149,11 +150,11 @@ func (c *confirmation) renderInteractive() (bool, error) {
 	var helpLine string
 	switch {
 	case c.defaultVal == nil:
-		helpLine = safeStyle(c.cfg.Styles.ConfirmationHelp).Sprint("Press Y or N  •  must confirm  •  ctrl+c to cancel")
+		helpLine = safeStyle(c.cfg.Styles.ConfirmationHelp).Sprint("press Y or N (selection mandatory) • ctrl+c to cancel")
 	case *c.defaultVal:
-		helpLine = safeStyle(c.cfg.Styles.ConfirmationHelp).Sprint("Press Y or N  •  defaults to yes  •  ctrl+c to cancel")
+		helpLine = safeStyle(c.cfg.Styles.ConfirmationHelp).Sprint("press Y or N (default: yes) • ctrl+c to cancel")
 	default:
-		helpLine = safeStyle(c.cfg.Styles.ConfirmationHelp).Sprint("Press Y or N  •  defaults to no  •  ctrl+c to cancel")
+		helpLine = safeStyle(c.cfg.Styles.ConfirmationHelp).Sprint("press Y or N (default: no) • ctrl+c to cancel")
 	}
 
 	// Double-pass redraw: paint both lines, restore, rewrite prompt line to park cursor.
@@ -164,7 +165,6 @@ func (c *confirmation) renderInteractive() (bool, error) {
 
 		// Pass 2: restore and rewrite prompt line to park cursor after label
 		stdOutput.Write([]byte(ansiRestoreCursor + "\r" + promptLine))
-
 		stdOutput.Write([]byte(ansiShowCursor))
 	}
 
@@ -172,7 +172,7 @@ func (c *confirmation) renderInteractive() (bool, error) {
 	stdOutput.Write([]byte(ansiHideCursor + ansiSaveCursor))
 	defer stdOutput.Write([]byte(ansiRestoreCursor + ansiClearScreen + ansiReset + ansiShowCursor))
 
-	// Render the prompt
+	// Render the prompt (first render)
 	redraw()
 
 	// Intercept keyboard events & handle them
