@@ -2,6 +2,7 @@ package asky
 
 import (
 	"bufio"
+	"fmt"
 	"os"
 	"os/signal"
 	"strconv"
@@ -21,7 +22,6 @@ type singleSelect struct {
 	defaultChoiceIdx *int
 	cursorIndicator  string
 	selectionMarker  string
-	disabledMarker   string
 	pageSize         int
 	selectedChoice   Choice
 	validator        func(Choice) (string, bool)
@@ -38,7 +38,6 @@ func Select() *singleSelect {
 		choices:         []Choice{},
 		cursorIndicator: ">",
 		selectionMarker: "*",
-		disabledMarker:  "-",
 		pageSize:        10,
 	}
 }
@@ -91,12 +90,6 @@ func (s *singleSelect) WithSelectionMarker(mrk string) *singleSelect {
 	return s
 }
 
-// WithDisabledMarker overrides the disabled item marker symbol.
-func (s *singleSelect) WithDisabledMarker(mrk string) *singleSelect {
-	s.disabledMarker = mrk
-	return s
-}
-
 // WithValidator sets a validator called on enter. Use [ValidateSelectRequired]
 // or a custom func(Choice) (string, bool).
 func (s *singleSelect) WithValidator(v func(Choice) (string, bool)) *singleSelect {
@@ -121,9 +114,9 @@ func (s *singleSelect) Render() (Choice, error) {
 
 // renderAccessible prints a numbered list and collects the user's choice by index.
 func (s *singleSelect) renderAccessible() (Choice, error) {
-	prefix := pick(s.prefix, "(?)")
 
-	// Print header
+	// Print the header
+	prefix := pick(s.prefix, "(?)")
 	stdOutput.Write([]byte(
 		safeStyle(s.cfg.Styles.SelectionPrefix).Sprint(prefix+" ") +
 			safeStyle(s.cfg.Styles.SelectionLabel).Sprint(s.label) + "\n",
@@ -133,26 +126,20 @@ func (s *singleSelect) renderAccessible() (Choice, error) {
 	width := len(strconv.Itoa(len(s.choices)))
 	for i, c := range s.choices {
 		num := safeStyle(s.cfg.Styles.SelectionSearchHint).Sprintf("%*d. ", width, i+1)
-		var label string
-		if c.Disabled {
-			label = safeStyle(s.cfg.Styles.SelectionItemDisabledLabel).Sprint(c.Label) +
-				safeStyle(s.cfg.Styles.SelectionItemDisabledMarker).Sprint(" (disabled)")
-		} else {
-			label = safeStyle(s.cfg.Styles.SelectionItemNormalLabel).Sprint(c.Label)
-		}
+		label := safeStyle(s.cfg.Styles.SelectionItemNormalLabel).Sprint(c.Label)
 		stdOutput.Write([]byte("  " + num + label + "\n"))
 	}
 
-	// Build prompt hint
+	// Build the prompt
 	hint := ""
 	if s.defaultChoiceIdx != nil {
 		idx := *s.defaultChoiceIdx
 		if idx >= 0 && idx < len(s.choices) {
-			hint = safeStyle(s.cfg.Styles.SelectionSearchHint).
-				Sprintf("(default: %d) ", idx+1)
+			hint = fmt.Sprintf(" (default %d) ", idx+1)
 		}
 	}
-	promptStr := safeStyle(s.cfg.Styles.SelectionPrefix).Sprint("> ") + hint
+	promptStr := safeStyle(s.cfg.Styles.SelectionPrefix).Sprint(prefix) + " " +
+		safeStyle(s.cfg.Styles.SelectionLabel).Sprintf("Choose between 1 and %d%s: ", len(s.choices), hint)
 
 	for {
 		stdOutput.Write([]byte(promptStr))
@@ -188,7 +175,7 @@ func (s *singleSelect) renderAccessible() (Choice, error) {
 			line = strings.TrimSpace(strings.TrimRight(r.line, "\r\n"))
 		}
 
-		// Empty input — use default if set
+		// Empty input uses default if set
 		if line == "" {
 			if s.defaultChoiceIdx != nil {
 				idx := *s.defaultChoiceIdx
@@ -219,11 +206,6 @@ func (s *singleSelect) renderAccessible() (Choice, error) {
 
 		chosen := s.choices[n-1]
 
-		if chosen.Disabled {
-			stdOutput.Write([]byte(safeStyle(s.cfg.Styles.SelectionValidationFail).Sprint("that choice is disabled\n")))
-			continue
-		}
-
 		if s.validator != nil {
 			if msg, ok := s.validator(chosen); !ok {
 				stdOutput.Write([]byte(safeStyle(s.cfg.Styles.SelectionValidationFail).Sprint(msg) + "\n"))
@@ -238,10 +220,6 @@ func (s *singleSelect) renderAccessible() (Choice, error) {
 // renderInteractive renders a navigable list with search. Arrow keys and
 // vi-keys move the cursor, space selects, enter confirms.
 func (s *singleSelect) renderInteractive() (Choice, error) {
-	if err := reserveLines(6 + s.pageSize); err != nil {
-		return Choice{}, ErrTerminalTooSmall
-	}
-
 	// State
 	interrupted := false
 	searchQuery := ""
@@ -252,6 +230,11 @@ func (s *singleSelect) renderInteractive() (Choice, error) {
 	startIdx := 0
 	endIdx := min(len(filteredChoices), pageSize)
 	valMessage := ""
+
+	// Reserve space for the list
+	if err := reserveLines(6 + pageSize); err != nil {
+		return Choice{}, err
+	}
 
 	// Line constructors
 	prefix := pick(s.prefix, "(?)")
@@ -265,25 +248,18 @@ func (s *singleSelect) renderInteractive() (Choice, error) {
 		cursorSpacer := strings.Repeat(" ", runewidth.StringWidth(s.cursorIndicator))
 		selSpacer := strings.Repeat(" ", runewidth.StringWidth(s.selectionMarker))
 		switch {
-		case c.Disabled && cur:
-			return safeStyle(s.cfg.Styles.SelectionItemDisabledMarker).Sprint(s.cursorIndicator+s.disabledMarker) +
-				safeStyle(s.cfg.Styles.SelectionItemDisabledLabel).Sprint(c.Label)
 		case sel && cur:
-			return safeStyle(s.cfg.Styles.SelectionItemSelectedMarker).Sprint(s.cursorIndicator+s.selectionMarker) +
+			return safeStyle(s.cfg.Styles.SelectionItemSelectedMarker).Sprint(s.cursorIndicator+s.selectionMarker) + " " +
 				safeStyle(s.cfg.Styles.SelectionItemSelectedLabel).Sprint(c.Label)
-		case c.Disabled:
-			return cursorSpacer +
-				safeStyle(s.cfg.Styles.SelectionItemDisabledMarker).Sprint(s.disabledMarker) +
-				safeStyle(s.cfg.Styles.SelectionItemDisabledLabel).Sprint(c.Label)
 		case sel:
 			return cursorSpacer +
-				safeStyle(s.cfg.Styles.SelectionItemSelectedMarker).Sprint(s.selectionMarker) +
+				safeStyle(s.cfg.Styles.SelectionItemSelectedMarker).Sprint(s.selectionMarker) + " " +
 				safeStyle(s.cfg.Styles.SelectionItemSelectedLabel).Sprint(c.Label)
 		case cur:
-			return safeStyle(s.cfg.Styles.SelectionItemCurrentMarker).Sprint(s.cursorIndicator) + selSpacer +
+			return safeStyle(s.cfg.Styles.SelectionItemCurrentMarker).Sprint(s.cursorIndicator) + selSpacer + " " +
 				safeStyle(s.cfg.Styles.SelectionItemCurrentLabel).Sprint(c.Label)
 		default:
-			return cursorSpacer + selSpacer +
+			return cursorSpacer + selSpacer + " " +
 				safeStyle(s.cfg.Styles.SelectionItemNormalLabel).Sprint(c.Label)
 		}
 	}
@@ -345,12 +321,12 @@ func (s *singleSelect) renderInteractive() (Choice, error) {
 		// Search line
 		sl := searchLabel + safeStyle(s.cfg.Styles.SelectionSearchText).Sprint(searchQuery)
 		if searchMode {
-			sl += safeStyle(s.cfg.Styles.SelectionSearchHint).Sprint(" ◂ " + strconv.Itoa(len(filteredChoices)) + " hits")
+			sl += safeStyle(s.cfg.Styles.SelectionSearchHint).Sprint(" • " + strconv.Itoa(len(filteredChoices)) + " hits")
 		}
 		if s.selectedChoice != (Choice{}) {
-			sl += safeStyle(s.cfg.Styles.SelectionSearchHint).Sprint(" [1 selected]")
+			sl += safeStyle(s.cfg.Styles.SelectionSearchHint).Sprint(" (1 selected)")
 		} else {
-			sl += safeStyle(s.cfg.Styles.SelectionSearchHint).Sprint(" [0 selected]")
+			sl += safeStyle(s.cfg.Styles.SelectionSearchHint).Sprint(" (0 selected)")
 		}
 		stdOutput.Write([]byte("\r" + sl + ansiClearLine + "\n"))
 
@@ -422,10 +398,6 @@ func (s *singleSelect) renderInteractive() (Choice, error) {
 				break
 			}
 			cur := filteredChoices[cursorIdx]
-			if cur.Disabled {
-				valMessage = "cannot select a disabled choice"
-				break
-			}
 			if s.selectedChoice.Value == cur.Value {
 				s.selectedChoice = Choice{}
 			} else {
