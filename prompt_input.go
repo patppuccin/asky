@@ -255,12 +255,8 @@ func (i *input) renderInteractive() (string, error) {
 
 		// Validation Line
 		stdOutput.Write([]byte("\n\r" + ansiClearLine))
-		if i.validator != nil && validationMsg != "" && receivedInput {
-			if validOK != nil && !*validOK {
-				stdOutput.Write([]byte(safeStyle(i.cfg.Styles.InputValidationFail).Sprint(validationMsg)))
-			} else {
-				stdOutput.Write([]byte(safeStyle(i.cfg.Styles.InputValidationPass).Sprint(validationMsg)))
-			}
+		if receivedInput && i.validator != nil && validOK != nil && !*validOK && validationMsg != "" {
+			stdOutput.Write([]byte(safeStyle(i.cfg.Styles.InputValidationFail).Sprint(validationMsg)))
 		}
 
 		// Help Line
