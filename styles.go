@@ -37,7 +37,6 @@ type StyleMap struct {
 	InputLabel          *color.Color
 	InputPlaceholder    *color.Color
 	InputText           *color.Color
-	InputValidationPass *color.Color
 	InputValidationFail *color.Color
 	InputHelp           *color.Color
 
@@ -49,12 +48,10 @@ type StyleMap struct {
 	// Selection prompt styles.
 	SelectionPrefix             *color.Color
 	SelectionLabel              *color.Color
-	SelectionDesc               *color.Color
 	SelectionHelp               *color.Color
 	SelectionSearchLabel        *color.Color
 	SelectionSearchText         *color.Color
 	SelectionSearchHint         *color.Color
-	SelectionValidationPass     *color.Color
 	SelectionValidationFail     *color.Color
 	SelectionItemNormalMarker   *color.Color
 	SelectionItemNormalLabel    *color.Color
@@ -62,8 +59,6 @@ type StyleMap struct {
 	SelectionItemCurrentLabel   *color.Color
 	SelectionItemSelectedMarker *color.Color
 	SelectionItemSelectedLabel  *color.Color
-	SelectionItemDisabledMarker *color.Color
-	SelectionItemDisabledLabel  *color.Color
 
 	// Spinner styles.
 	SpinnerPrefix *color.Color
@@ -103,7 +98,6 @@ func NewStyles() *StyleMap {
 		InputLabel:          color.New(color.Reset),
 		InputPlaceholder:    color.New(color.FgHiBlack),
 		InputText:           color.New(color.Reset),
-		InputValidationPass: color.New(color.FgGreen),
 		InputValidationFail: color.New(color.FgRed),
 		InputHelp:           color.New(color.FgHiBlack),
 
@@ -119,7 +113,6 @@ func NewStyles() *StyleMap {
 		SelectionSearchLabel:        color.New(color.FgYellow, color.Bold),
 		SelectionSearchText:         color.New(color.Reset),
 		SelectionSearchHint:         color.New(color.FgHiBlack),
-		SelectionValidationPass:     color.New(color.FgGreen),
 		SelectionValidationFail:     color.New(color.FgRed),
 		SelectionItemNormalMarker:   color.New(color.Reset),
 		SelectionItemNormalLabel:    color.New(color.Reset),
@@ -127,8 +120,6 @@ func NewStyles() *StyleMap {
 		SelectionItemCurrentLabel:   color.New(color.FgHiYellow),
 		SelectionItemSelectedMarker: color.New(color.FgGreen),
 		SelectionItemSelectedLabel:  color.New(color.FgGreen),
-		SelectionItemDisabledMarker: color.New(color.FgHiBlack),
-		SelectionItemDisabledLabel:  color.New(color.FgHiBlack, color.CrossedOut),
 
 		// Spinners
 		SpinnerPrefix: color.New(color.FgYellow, color.Bold),
