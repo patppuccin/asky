@@ -8,8 +8,6 @@ import (
 	"strconv"
 	"strings"
 	"syscall"
-
-	"github.com/mattn/go-runewidth"
 )
 
 // singleSelect renders an interactive single-selection prompt.
@@ -66,7 +64,7 @@ func (s *singleSelect) WithChoices(ch []Choice) *singleSelect {
 	return s
 }
 
-// WithDefaultChoice pre-selects a choice by index.
+// WithDefaultChoice pre-selects a choice by using a zero-based index.
 func (s *singleSelect) WithDefaultChoice(idx int) *singleSelect {
 	s.defaultChoiceIdx = &idx
 	return s
@@ -90,8 +88,8 @@ func (s *singleSelect) WithSelectionMarker(mrk string) *singleSelect {
 	return s
 }
 
-// WithValidator sets a validator called on enter. Use [ValidateSelectRequired]
-// or a custom func(Choice) (string, bool).
+// WithValidator sets a validator called on enter.
+// Use [ValidateSelectRequired] or a custom func(Choice) (string, bool).
 func (s *singleSelect) WithValidator(v func(Choice) (string, bool)) *singleSelect {
 	s.validator = v
 	return s
@@ -113,6 +111,7 @@ func (s *singleSelect) Render() (Choice, error) {
 }
 
 // renderAccessible prints a numbered list and collects the user's choice by index.
+// It uses a 1-based index, printed next to the choice label.
 func (s *singleSelect) renderAccessible() (Choice, error) {
 
 	// Print the header
@@ -220,140 +219,125 @@ func (s *singleSelect) renderAccessible() (Choice, error) {
 // renderInteractive renders a navigable list with search. Arrow keys and
 // vi-keys move the cursor, space selects, enter confirms.
 func (s *singleSelect) renderInteractive() (Choice, error) {
-	// State
-	interrupted := false
-	searchQuery := ""
-	searchMode := false
-	filteredChoices := s.choices
-	pageSize := min(s.pageSize, len(filteredChoices))
-	cursorIdx := 0
-	startIdx := 0
-	endIdx := min(len(filteredChoices), pageSize)
-	valMessage := ""
+	const (
+		minTermWidth  = 42
+		minTermHeight = 12
+	)
+	var (
+		interrupted     = false
+		searchQuery     = ""
+		searchMode      = false
+		filteredChoices = s.choices
+		nav             = &selectionNav{}
+		valMessage      = ""
+		prevHeight      = 0
+	)
 
-	// Reserve space for the list
-	if err := reserveLines(6 + pageSize); err != nil {
-		return Choice{}, err
+	// Initialize navigation
+	nav.reset(len(filteredChoices), min(s.pageSize, len(filteredChoices)))
+
+	// Guard against small terminal dimensions
+	if w, h, err := termSize(); err != nil || w < minTermWidth || h < minTermHeight {
+		return Choice{}, ErrTerminalTooSmall
 	}
 
-	// Line constructors
-	prefix := pick(s.prefix, "(?)")
-	promptLine := safeStyle(s.cfg.Styles.SelectionPrefix).Sprint(prefix+" ") +
+	// Build the header lines
+	promptLine := safeStyle(s.cfg.Styles.SelectionPrefix).Sprint(pick(s.prefix, "(?)")) + " " +
 		safeStyle(s.cfg.Styles.SelectionLabel).Sprint(s.label)
 	searchLabel := safeStyle(s.cfg.Styles.SelectionSearchLabel).Sprint("Search: ")
-	helpNormal := safeStyle(s.cfg.Styles.SelectionHelp).Sprint("↑/↓ move • space select • enter confirm" + ansiClearLine + "\n\rtab to search" + ansiClearLine)
-	helpSearch := safeStyle(s.cfg.Styles.SelectionHelp).Sprint("↑/↓ move • space select • enter confirm" + ansiClearLine + "\n\rtype to search (esc/tab nav)" + ansiClearLine)
+	headerLines := []string{promptLine, ""}
 
-	renderChoice := func(c Choice, cur, sel bool) string {
-		cursorSpacer := strings.Repeat(" ", runewidth.StringWidth(s.cursorIndicator))
-		selSpacer := strings.Repeat(" ", runewidth.StringWidth(s.selectionMarker))
-		switch {
-		case sel && cur:
-			return safeStyle(s.cfg.Styles.SelectionItemSelectedMarker).Sprint(s.cursorIndicator+s.selectionMarker) + " " +
-				safeStyle(s.cfg.Styles.SelectionItemSelectedLabel).Sprint(c.Label)
-		case sel:
-			return cursorSpacer +
-				safeStyle(s.cfg.Styles.SelectionItemSelectedMarker).Sprint(s.selectionMarker) + " " +
-				safeStyle(s.cfg.Styles.SelectionItemSelectedLabel).Sprint(c.Label)
-		case cur:
-			return safeStyle(s.cfg.Styles.SelectionItemCurrentMarker).Sprint(s.cursorIndicator) + selSpacer + " " +
-				safeStyle(s.cfg.Styles.SelectionItemCurrentLabel).Sprint(c.Label)
-		default:
-			return cursorSpacer + selSpacer + " " +
-				safeStyle(s.cfg.Styles.SelectionItemNormalLabel).Sprint(c.Label)
-		}
-	}
-
-	filterChoices := func(query string) []Choice {
-		if query == "" {
-			return s.choices
-		}
-		var filtered []Choice
-		q := strings.ToLower(query)
-		for _, c := range s.choices {
-			if strings.Contains(strings.ToLower(c.Label), q) {
-				filtered = append(filtered, c)
-			}
-		}
-		return filtered
-	}
-
-	resetCursor := func() {
-		if len(filteredChoices) == 0 {
-			cursorIdx, startIdx, endIdx = 0, 0, 0
-			return
-		}
-		if cursorIdx >= len(filteredChoices) {
-			cursorIdx = len(filteredChoices) - 1
-		}
-		if cursorIdx < startIdx {
-			startIdx = cursorIdx
-		}
-		if cursorIdx >= startIdx+pageSize {
-			startIdx = max(0, cursorIdx-pageSize+1)
-		}
-		endIdx = min(startIdx+pageSize, len(filteredChoices))
-	}
-
-	navigateUp := func() {
-		if cursorIdx > 0 {
-			cursorIdx--
-			if cursorIdx < startIdx {
-				startIdx = cursorIdx
-				endIdx = min(startIdx+pageSize, len(filteredChoices))
-			}
-		}
-	}
-
-	navigateDown := func() {
-		if cursorIdx < len(filteredChoices)-1 {
-			cursorIdx++
-			if cursorIdx >= endIdx {
-				endIdx = cursorIdx + 1
-				startIdx = max(0, endIdx-pageSize)
-			}
-		}
-	}
-
+	// Selection Prompt Renderer
 	redraw := func() {
-		stdOutput.Write([]byte(ansiRestoreCursor + "\r" + promptLine + "\n"))
+		newW, newH, _ := termSize()
 
-		// Search line
-		sl := searchLabel + safeStyle(s.cfg.Styles.SelectionSearchText).Sprint(searchQuery)
+		// Build the current search line
+		searchLine := searchLabel + safeStyle(s.cfg.Styles.SelectionSearchText).Sprint(searchQuery)
 		if searchMode {
-			sl += safeStyle(s.cfg.Styles.SelectionSearchHint).Sprint(" • " + strconv.Itoa(len(filteredChoices)) + " hits")
+			searchLine += safeStyle(s.cfg.Styles.SelectionSearchHint).Sprint(" • " + strconv.Itoa(len(filteredChoices)) + " hits")
 		}
 		if s.selectedChoice != (Choice{}) {
-			sl += safeStyle(s.cfg.Styles.SelectionSearchHint).Sprint(" (1 selected)")
+			searchLine += safeStyle(s.cfg.Styles.SelectionSearchHint).Sprint(" (1 selected)")
 		} else {
-			sl += safeStyle(s.cfg.Styles.SelectionSearchHint).Sprint(" (0 selected)")
-		}
-		stdOutput.Write([]byte("\r" + sl + ansiClearLine + "\n"))
-
-		// Choices
-		for i := startIdx; i < endIdx; i++ {
-			c := filteredChoices[i]
-			stdOutput.Write([]byte("\r" + renderChoice(c, i == cursorIdx, c.Value == s.selectedChoice.Value) + ansiClearLine + "\n"))
-		}
-		// Pad remaining page lines
-		for i := endIdx - startIdx; i < pageSize; i++ {
-			stdOutput.Write([]byte("\r" + ansiClearLine + "\n"))
+			searchLine += safeStyle(s.cfg.Styles.SelectionSearchHint).Sprint(" (0 selected)")
 		}
 
-		// Validation message
-		stdOutput.Write([]byte("\n\r" + safeStyle(s.cfg.Styles.SelectionValidationFail).Sprint(valMessage) + ansiClearLine + "\n\r"))
+		// Update the header lines & compute the frame height for header
+		headerLines[1] = searchLine
+		headerLinesHeight := totalPhysicalLines(headerLines, newW)
 
-		// Help line
+		// Build the footer lines & compute the frame height for footer
+		footerLines := []string{""}
+		footerLines = append(footerLines, safeStyle(s.cfg.Styles.SelectionValidationFail).Sprint(valMessage))
 		if searchMode {
-			stdOutput.Write([]byte(helpSearch))
+			footerLines = append(footerLines, safeStyle(s.cfg.Styles.SelectionHelp).Sprint("↑/↓ move • space select • enter confirm"))
+			footerLines = append(footerLines, safeStyle(s.cfg.Styles.SelectionHelp).Sprint("type to search (esc/tab nav)"))
 		} else {
-			stdOutput.Write([]byte(helpNormal))
+			footerLines = append(footerLines, safeStyle(s.cfg.Styles.SelectionHelp).Sprint("↑/↓ move • space select • enter confirm"))
+			footerLines = append(footerLines, safeStyle(s.cfg.Styles.SelectionHelp).Sprint("tab to search"))
 		}
-	}
+		footerLinesHeight := totalPhysicalLines(footerLines, newW)
 
-	// Save cursor, defer cleanup
-	stdOutput.Write([]byte(ansiHideCursor + ansiSaveCursor))
-	defer stdOutput.Write([]byte(ansiRestoreCursor + ansiClearScreen + ansiReset + ansiShowCursor))
+		// Compute page size & reset navigation if needed
+		pageSize := min(s.pageSize, len(filteredChoices), newH-headerLinesHeight-footerLinesHeight)
+		if pageSize != nav.pageSize && pageSize > 0 {
+			nav.reset(len(filteredChoices), pageSize)
+		}
+
+		// Build contentLines
+		var contentLines []string
+		contentLines = append(contentLines, headerLines...)
+
+		// Build content for the visible choices list & pad the rest with empty lines
+		for i := nav.startIdx; i < nav.endIdx; i++ {
+			contentLines = append(contentLines, renderSelectionChoice(
+				filteredChoices[i],
+				i == nav.cursorIdx,
+				filteredChoices[i].Value == s.selectedChoice.Value,
+				newW-1,
+				s.cursorIndicator,
+				s.selectionMarker,
+				s.cfg.Styles),
+			)
+		}
+
+		// Pad the rest to maintain consistent height
+		for i := nav.endIdx - nav.startIdx; i < nav.pageSize; i++ {
+			contentLines = append(contentLines, "")
+		}
+		contentLines = append(contentLines, footerLines...)
+
+		// Compute new frame's physical height at current width
+		newHeight := totalPhysicalLines(contentLines, newW)
+
+		if newH < newHeight || newW < minTermWidth || newH < minTermHeight {
+			ansiCursorUp(prevHeight)
+			stdOutput.Write([]byte(
+				"\r" + ansiClearScreen +
+					safeStyle(s.cfg.Styles.SelectionItemCurrentMarker).Sprint("terminal too small to render content"),
+			))
+			return
+		}
+
+		// Move up by the previous frame's physical height to overwrite it
+		if prevHeight > 0 {
+			ansiCursorUp(prevHeight)
+		}
+
+		// Write new frame, clearing every physical row including wrapped continuations
+		var b strings.Builder
+		for i, line := range contentLines {
+			if i == len(contentLines)-1 {
+				b.WriteString("\r" + line + ansiClearLine)
+			} else {
+				b.WriteString("\r" + line + ansiClearLine + "\n")
+			}
+		}
+		b.WriteString(ansiClearScreen)
+
+		stdOutput.Write([]byte(b.String()))
+		prevHeight = newHeight - 1
+	}
 
 	// Apply default selection
 	if s.defaultChoiceIdx != nil {
@@ -363,26 +347,30 @@ func (s *singleSelect) renderInteractive() (Choice, error) {
 		}
 	}
 
+	// Prep for render, hide cursor, defer cleanup
+	stdOutput.Write([]byte("\r" + ansiHideCursor))
+	defer func() {
+		ansiCursorUp(prevHeight)
+		stdOutput.Write([]byte("\r" + ansiClearScreen + ansiReset + ansiShowCursor))
+	}()
+
+	// Initial render
 	redraw()
 
+	// Handle user input & redraw per keystroke
 	err := listenKeys(func(ev keyEvent) (stop bool) {
 		switch ev.code {
 		case keyCtrlC:
 			interrupted = true
 			return true
-
 		case keyUp:
-			navigateUp()
-
+			nav.up(len(filteredChoices))
 		case keyDown:
-			navigateDown()
-
+			nav.down(len(filteredChoices))
 		case keyTab:
 			searchMode = !searchMode
-
 		case keyEscape:
 			searchMode = false
-
 		case keyEnter:
 			if s.validator != nil {
 				if msg, ok := s.validator(s.selectedChoice); !ok {
@@ -391,46 +379,43 @@ func (s *singleSelect) renderInteractive() (Choice, error) {
 				}
 			}
 			return true
-
 		case keySpace:
 			if len(filteredChoices) == 0 {
 				valMessage = "no choices available"
 				break
 			}
-			cur := filteredChoices[cursorIdx]
+			cur := filteredChoices[nav.cursorIdx]
 			if s.selectedChoice.Value == cur.Value {
 				s.selectedChoice = Choice{}
 			} else {
 				s.selectedChoice = cur
 			}
 			valMessage = ""
-
 		case keyBackspace:
 			if searchMode && len(searchQuery) > 0 {
 				searchQuery = searchQuery[:len(searchQuery)-1]
-				filteredChoices = filterChoices(searchQuery)
-				resetCursor()
+				filteredChoices = filterSelectionChoices(s.choices, searchQuery)
+				nav.reset(len(filteredChoices), nav.pageSize)
 			}
-
 		case keyRune:
 			if searchMode {
 				searchQuery += string(ev.r)
-				filteredChoices = filterChoices(searchQuery)
-				resetCursor()
+				filteredChoices = filterSelectionChoices(s.choices, searchQuery)
+				nav.reset(len(filteredChoices), nav.pageSize)
 			} else {
 				switch ev.r {
 				case 'j', 'l':
-					navigateDown()
+					nav.down(len(filteredChoices))
 				case 'k', 'h':
-					navigateUp()
+					nav.up(len(filteredChoices))
 				}
 			}
 		}
-
 		redraw()
 		return false
 	})
 
+	// Handle errors, edge cases, interrupts and return selected choice
 	if err != nil {
 		return Choice{}, err
 	}
