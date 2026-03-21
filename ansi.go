@@ -10,7 +10,7 @@ const (
 	ansiSaveCursor    = "\0337"
 	ansiRestoreCursor = "\0338"
 
-	ansiReset       = "\033[0m"
+	ansiReset       = "\033[0m\033[0 q"
 	ansiClearLine   = "\033[K"
 	ansiClearScreen = "\033[J"
 )
