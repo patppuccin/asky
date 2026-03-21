@@ -30,8 +30,6 @@ type ProgressPattern struct {
 }
 
 // progress renders an animated progress bar on a single line.
-// It saves the cursor before rendering and cleans up automatically
-// when the total is reached, leaving no trace in the terminal output.
 // Construct one with [Progress].
 type progress struct {
 	cfg            Config
@@ -45,6 +43,7 @@ type progress struct {
 	wg             sync.WaitGroup
 	mu             sync.Mutex
 	lastCompletion int
+	lineHeight     int
 }
 
 // Progress returns a progress bar builder with sensible defaults.
@@ -55,7 +54,7 @@ type progress struct {
 //	    upload(f)
 //	    pb.Increment() // blocks on the final call until cleanup completes
 //	}
-//	asky.LogMessage().Success("all files uploaded") // terminal is guaranteed clean
+//	asky.Log().Info("all files uploaded") // terminal is guaranteed clean
 func Progress() *progress {
 	return &progress{
 		cfg:     pkgConfig,
@@ -103,14 +102,28 @@ func (pr *progress) WithPattern(p ProgressPattern) *progress {
 	return pr
 }
 
+// UpdateLabel changes the progress bar label while it is running.
+// Safe to call from any goroutine.
+//
+//	pb.UpdateLabel("uploading file 3/10...")
+func (pr *progress) UpdateLabel(label string) {
+	pr.mu.Lock()
+	pr.label = label
+	pr.mu.Unlock()
+
+	if pr.cfg.Accessible {
+		stdOutput.Write([]byte(
+			safeStyle(pr.cfg.Styles.ProgressPrefix).Sprint(pr.prefix) + " " +
+				safeStyle(pr.cfg.Styles.ProgressLabel).Sprint(label) + "\n"))
+	}
+}
+
 // Start begins the progress bar render loop in a background goroutine.
 // The bar cleans up automatically when the total is reached.
-// In accessible mode, prints a single static line instead of animating.
+// In accessible mode, prints milestone lines instead of animating.
 func (pr *progress) Start() {
-
-	// Save cursor and hide it before rendering
 	if !pr.cfg.Accessible {
-		stdOutput.Write([]byte(ansiSaveCursor + ansiHideCursor))
+		stdOutput.Write([]byte(ansiHideCursor))
 	}
 
 	// Watch for Ctrl+C: restore terminal before exit
@@ -124,19 +137,24 @@ func (pr *progress) Start() {
 	}()
 
 	pr.wg.Go(func() {
-		// Accessible mode: print a single static line instead of animating
 		if pr.cfg.Accessible {
 			for !pr.stop {
-				pr.redraw() // checks milestone internally, prints new line only on 10% jumps
+				pr.redraw()
 				time.Sleep(100 * time.Millisecond)
 			}
-			pr.redraw() // final print
+			pr.redraw()
 			return
 		}
 
-		defer stdOutput.Write([]byte(ansiRestoreCursor + ansiClearLine + ansiShowCursor))
+		defer func() {
+			if pr.lineHeight > 1 {
+				ansiCursorUp(pr.lineHeight - 1)
+			}
+			stdOutput.Write([]byte("\r" + ansiClearScreen + ansiShowCursor))
+		}()
+
 		for !pr.stop {
-			pr.redraw() // final print
+			pr.redraw()
 			time.Sleep(100 * time.Millisecond)
 		}
 		pr.redraw()
@@ -202,7 +220,7 @@ func (pr *progress) redraw() {
 	filled := min(int(ratio*float64(barWidth)), barWidth)
 	pending := barWidth - filled
 
-	// Accessible mode: print a single static line instead of animating
+	// Accessible mode: print milestone lines
 	if pr.cfg.Accessible {
 		milestone := int(ratio * 10) // 0-10
 		for pr.lastCompletion < milestone {
@@ -222,10 +240,18 @@ func (pr *progress) redraw() {
 		safeStyle(pr.cfg.Styles.ProgressBarPending).Sprint(strings.Repeat(pr.pattern.PendingChar, pending)) +
 		safeStyle(pr.cfg.Styles.ProgressBarPad).Sprint(pr.pattern.PadRight)
 
-	// Render on single line
-	stdOutput.Write([]byte(ansiRestoreCursor + ansiClearLine +
-		safeStyle(pr.cfg.Styles.ProgressPrefix).Sprint(pr.prefix) + " " +
+	line := safeStyle(pr.cfg.Styles.ProgressPrefix).Sprint(pr.prefix) + " " +
 		safeStyle(pr.cfg.Styles.ProgressLabel).Sprint(pr.label) + " " +
 		bar +
-		safeStyle(pr.cfg.Styles.ProgressBarStatus).Sprint(percent)))
+		safeStyle(pr.cfg.Styles.ProgressBarStatus).Sprint(percent)
+
+	newHeight := physicalLines(stripAnsi(line), termWidth)
+
+	// Move to top of previous frame
+	if pr.lineHeight > 1 {
+		ansiCursorUp(pr.lineHeight - 1)
+	}
+	stdOutput.Write([]byte("\r" + ansiClearScreen + line))
+
+	pr.lineHeight = newHeight
 }
