@@ -17,7 +17,7 @@ var stdOutput = colorable.NewColorableStdout()
 // construct it directly. Unset fields will be unstyled at runtime.
 //
 //	styles := asky.NewStyles()
-//	styles.InputPrefix = color.New(color.FgMagenta, color.Bold)
+//	styles.InputPrefix = color.New(color.FgMagenta)
 type StyleMap struct {
 	// Log message styles.
 	LogSuccessPrefix *color.Color
@@ -94,7 +94,7 @@ func NewStyles() *StyleMap {
 		LogGroupBody:     color.New(color.Reset),
 
 		// Input prompts
-		InputPrefix:         color.New(color.FgYellow, color.Bold),
+		InputPrefix:         color.New(color.FgYellow),
 		InputLabel:          color.New(color.Reset),
 		InputPlaceholder:    color.New(color.FgHiBlack),
 		InputText:           color.New(color.Reset),
@@ -102,31 +102,31 @@ func NewStyles() *StyleMap {
 		InputHelp:           color.New(color.FgHiBlack),
 
 		// Confirmation prompts
-		ConfirmationPrefix: color.New(color.FgYellow, color.Bold),
+		ConfirmationPrefix: color.New(color.FgYellow),
 		ConfirmationLabel:  color.New(color.Reset),
 		ConfirmationHelp:   color.New(color.FgHiBlack),
 
 		// Selection prompts
-		SelectionPrefix:             color.New(color.FgYellow, color.Bold),
+		SelectionPrefix:             color.New(color.FgYellow),
 		SelectionLabel:              color.New(color.Reset),
 		SelectionHelp:               color.New(color.FgHiBlack),
-		SelectionSearchLabel:        color.New(color.FgYellow, color.Bold),
+		SelectionSearchLabel:        color.New(color.FgYellow),
 		SelectionSearchText:         color.New(color.Reset),
 		SelectionSearchHint:         color.New(color.FgHiBlack),
 		SelectionValidationFail:     color.New(color.FgRed),
 		SelectionItemNormalMarker:   color.New(color.Reset),
 		SelectionItemNormalLabel:    color.New(color.Reset),
-		SelectionItemCurrentMarker:  color.New(color.FgYellow, color.Bold),
+		SelectionItemCurrentMarker:  color.New(color.FgYellow),
 		SelectionItemCurrentLabel:   color.New(color.FgHiYellow),
 		SelectionItemSelectedMarker: color.New(color.FgGreen),
 		SelectionItemSelectedLabel:  color.New(color.FgGreen),
 
 		// Spinners
-		SpinnerPrefix: color.New(color.FgYellow, color.Bold),
+		SpinnerPrefix: color.New(color.FgYellow),
 		SpinnerLabel:  color.New(color.Reset),
 
 		// Progress bars
-		ProgressPrefix:     color.New(color.FgYellow, color.Bold),
+		ProgressPrefix:     color.New(color.FgYellow),
 		ProgressLabel:      color.New(color.Reset),
 		ProgressBarPad:     color.New(color.FgYellow),
 		ProgressBarDone:    color.New(color.FgYellow),
