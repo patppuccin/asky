@@ -127,14 +127,10 @@ func (c *confirm) renderAccessible() (bool, error) {
 	}
 }
 
-// renderInteractive renders a two-line prompt: label on top with cursor,
-// help below. Y/N keys confirm directly and no need to press Enter.
+// renderInteractive renders the prompt label and help line.
+// Y/N keys confirm directly — no need to press Enter.
 // Cleans up after itself on exit.
 func (c *confirm) renderInteractive() (bool, error) {
-	if err := reserveLines(3); err != nil {
-		return false, ErrTerminalTooSmall
-	}
-
 	prefix := pick(c.prefix, "(?)")
 	promptLine := safeStyle(c.cfg.Styles.ConfirmationPrefix).Sprint(prefix) + " " +
 		safeStyle(c.cfg.Styles.ConfirmationLabel).Sprint(c.label) + " "
@@ -145,7 +141,11 @@ func (c *confirm) renderInteractive() (bool, error) {
 		selected = &v
 	}
 
-	interrupted := false
+	var (
+		interrupted = false
+		firstRender = true
+		cursorRow   = 0
+	)
 
 	var helpLine string
 	switch {
@@ -157,22 +157,50 @@ func (c *confirm) renderInteractive() (bool, error) {
 		helpLine = safeStyle(c.cfg.Styles.ConfirmationHelp).Sprint("press Y or N (default: no) • ctrl+c to cancel")
 	}
 
-	// Double-pass redraw: paint both lines, restore, rewrite prompt line to park cursor.
 	redraw := func() {
-		// Pass 1: paint both lines
-		stdOutput.Write([]byte(ansiHideCursor + ansiRestoreCursor + "\r" + ansiClearLine + promptLine))
-		stdOutput.Write([]byte("\n\r" + ansiClearLine + helpLine))
+		termW, _, _ := termSize()
 
-		// Pass 2: restore and rewrite prompt line to park cursor after label
-		stdOutput.Write([]byte(ansiRestoreCursor + "\r" + promptLine))
+		frameLines := []string{promptLine, helpLine}
+		frameHeight := totalPhysicalLines(frameLines, termW)
+
+		// Move cursor back to row 0 of the frame
+		if !firstRender {
+			ansiCursorUp(cursorRow)
+		}
+
+		// Write the full frame
+		stdOutput.Write([]byte(ansiHideCursor))
+
+		var b strings.Builder
+		for idx, line := range frameLines {
+			if idx == len(frameLines)-1 {
+				b.WriteString("\r" + line + ansiClearLine)
+			} else {
+				b.WriteString("\r" + line + ansiClearLine + "\n")
+			}
+		}
+		b.WriteString(ansiClearScreen)
+		stdOutput.Write([]byte(b.String()))
+
+		// Move from last frame line back to row 0
+		ansiCursorUp(frameHeight - 1)
+
+		// Position cursor at end of prompt line by reprinting it
+		stdOutput.Write([]byte("\r" + promptLine))
+		cursorRow = physicalLines(stripAnsi(promptLine), termW) - 1
+
 		stdOutput.Write([]byte(ansiShowCursor))
+		firstRender = false
 	}
 
-	// Save cursor and hide it before rendering
-	stdOutput.Write([]byte(ansiHideCursor + ansiSaveCursor))
-	defer stdOutput.Write([]byte(ansiRestoreCursor + ansiClearScreen + ansiReset + ansiShowCursor))
+	// Hide cursor, defer cleanup
+	stdOutput.Write([]byte("\r" + ansiHideCursor))
+	defer func() {
+		ansiCursorUp(cursorRow)
+		stdOutput.Write([]byte("\r" + ansiClearScreen + ansiReset + ansiShowCursor))
+	}()
 
-	// Render the prompt (first render)
+	// Initial render
 	redraw()
 
 	// Intercept keyboard events & handle them
@@ -212,7 +240,6 @@ func (c *confirm) renderInteractive() (bool, error) {
 		return false, ErrInterrupted
 	}
 
-	// Guard against nil selected value
 	if selected == nil {
 		return false, nil
 	}
