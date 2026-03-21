@@ -26,6 +26,7 @@ const (
 	keyEnd                      // \x1b[F, \x1b[4~, or \x1bOF
 	keyEscape                   // standalone \x1b (distinguished via timeout)
 	keyCtrlC                    // \x03
+	keyCtrlD                    // \x04
 	keyCtrlLeft                 // \x1b[1;5D
 	keyCtrlRight                // \x1b[1;5C
 	keyCtrlHome                 // \x1b[1;5H
@@ -205,6 +206,8 @@ func parseSingleOrUTF8(first byte, r *bufio.Reader) (keyEvent, error) {
 	switch first {
 	case 0x03:
 		return keyEvent{code: keyCtrlC}, nil
+	case 0x04:
+		return keyEvent{code: keyCtrlD}, nil
 	case 0x0d, 0x0a:
 		return keyEvent{code: keyEnter}, nil
 	case 0x7f, 0x08:
