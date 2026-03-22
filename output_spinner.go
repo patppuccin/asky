@@ -18,6 +18,12 @@ var (
 	SpinnerLine     = []string{"-", "\\", "|", "/"}
 	SpinnerPipes    = []string{"╾", "│", "╸", "┤", "├", "└", "┴", "┬", "┐", "┘"}
 	SpinnerMoons    = []string{"🌑", "🌒", "🌓", "🌔", "🌕", "🌖", "🌗", "🌘"}
+	SpinnerBounce   = []string{"⠁", "⠂", "⠄", "⡀", "⢀", "⠠", "⠐", "⠈"}
+	SpinnerArrows   = []string{"←", "↖", "↑", "↗", "→", "↘", "↓", "↙"}
+	SpinnerGrow     = []string{"▁", "▂", "▃", "▄", "▅", "▆", "▇", "█", "▇", "▆", "▅", "▄", "▃", "▂"}
+	SpinnerToggle   = []string{"⊶", "⊷"}
+	SpinnerArc      = []string{"◜", "◠", "◝", "◞", "◡", "◟"}
+	SpinnerBall     = []string{"( ●    )", "(  ●   )", "(   ●  )", "(    ● )", "(     ●)", "(    ● )", "(   ●  )", "(  ●   )", "( ●    )", "(●     )"}
 )
 
 // spinner renders an animated spinner on a single line.

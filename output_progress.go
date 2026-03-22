@@ -19,6 +19,10 @@ var (
 	ProgressPlus    = ProgressPattern{DoneChar: "+", PendingChar: " ", PadLeft: "(", PadRight: ")"}
 	ProgressHashes  = ProgressPattern{DoneChar: "#", PendingChar: " ", PadLeft: "[", PadRight: "]"}
 	ProgressDots    = ProgressPattern{DoneChar: "▪", PendingChar: "▫", PadLeft: " ", PadRight: " "}
+	ProgressArrow   = ProgressPattern{DoneChar: "━", PendingChar: "─", PadLeft: " ", PadRight: " "}
+	ProgressPipe    = ProgressPattern{DoneChar: "┃", PendingChar: "│", PadLeft: "╟", PadRight: "╢"}
+	ProgressShade   = ProgressPattern{DoneChar: "▓", PendingChar: "░", PadLeft: "│", PadRight: "│"}
+	ProgressThin    = ProgressPattern{DoneChar: "―", PendingChar: "⋯", PadLeft: " ", PadRight: " "}
 )
 
 // ProgressPattern defines the characters used to render the progress bar.
