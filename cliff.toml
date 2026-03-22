@@ -4,8 +4,6 @@
 [changelog]
 header = ""
 body = """
-## ASKY Release {{ version }} Changelog
-
 > To install or upgrade to this version, run `go get -u github.com/patppuccin/asky@{{ version }}`.
 {% for group, commits in commits | group_by(attribute="group") %}
 ### {{ group }}
