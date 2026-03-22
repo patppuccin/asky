@@ -69,15 +69,15 @@ func Text() *text
 
 **Builder Methods**
 
-| Method | Signature | Description |
-|--------|-----------|-------------|
-| `WithLabel` | `(l string) *text` | Sets the prompt label shown to the user |
-| `WithPlaceholder` | `(p string) *text` | Sets placeholder text shown when input is empty |
-| `WithDefaultValue` | `(v string) *text` | Sets default value used when user submits empty input |
-| `WithValidator` | `(fn func(string) (string, bool)) *text` | Sets validation function called on every keystroke |
-| `WithPrefix` | `(p string) *text` | Overrides the default prompt prefix symbol |
-| `WithStyles` | `(s *StyleMap) *text` | Overrides the StyleMap for this prompt |
-| `Render` | `() (string, error)` | Displays the prompt and blocks until submission |
+| Method             | Signature                                | Description                                           |
+| ------------------ | ---------------------------------------- | ----------------------------------------------------- |
+| `WithLabel`        | `(l string) *text`                       | Sets the prompt label shown to the user               |
+| `WithPlaceholder`  | `(p string) *text`                       | Sets placeholder text shown when input is empty       |
+| `WithDefaultValue` | `(v string) *text`                       | Sets default value used when user submits empty input |
+| `WithValidator`    | `(fn func(string) (string, bool)) *text` | Sets validation function called on every keystroke    |
+| `WithPrefix`       | `(p string) *text`                       | Overrides the default prompt prefix symbol            |
+| `WithStyles`       | `(s *StyleMap) *text`                    | Overrides the StyleMap for this prompt                |
+| `Render`           | `() (string, error)`                     | Displays the prompt and blocks until submission       |
 
 **Example**
 
@@ -112,21 +112,21 @@ func Secret() *secret
 
 **Builder Methods**
 
-| Method | Signature | Description |
-|--------|-----------|-------------|
-| `WithLabel` | `(l string) *secret` | Sets the prompt label shown to the user |
-| `WithEcho` | `(m EchoMode) *secret` | Sets how typed characters are displayed |
-| `WithValidator` | `(fn func(string) (string, bool)) *secret` | Sets validation function called on submit |
-| `WithPrefix` | `(p string) *secret` | Overrides the default prompt prefix symbol |
-| `WithStyles` | `(s *StyleMap) *secret` | Overrides the StyleMap for this prompt |
-| `Render` | `() (string, error)` | Displays the prompt and blocks until submission |
+| Method          | Signature                                  | Description                                     |
+| --------------- | ------------------------------------------ | ----------------------------------------------- |
+| `WithLabel`     | `(l string) *secret`                       | Sets the prompt label shown to the user         |
+| `WithEcho`      | `(m EchoMode) *secret`                     | Sets how typed characters are displayed         |
+| `WithValidator` | `(fn func(string) (string, bool)) *secret` | Sets validation function called on submit       |
+| `WithPrefix`    | `(p string) *secret`                       | Overrides the default prompt prefix symbol      |
+| `WithStyles`    | `(s *StyleMap) *secret`                    | Overrides the StyleMap for this prompt          |
+| `Render`        | `() (string, error)`                       | Displays the prompt and blocks until submission |
 
 **Echo Modes**
 
-| Mode | Description |
-|------|-------------|
-| `EchoMask` | Characters echoed as `*` (default) |
-| `EchoSilent` | Nothing echoed |
+| Mode         | Description                        |
+| ------------ | ---------------------------------- |
+| `EchoMask`   | Characters echoed as `*` (default) |
+| `EchoSilent` | Nothing echoed                     |
 
 **Example**
 
@@ -170,15 +170,15 @@ func MultilineText() *multilineText
 
 **Builder Methods**
 
-| Method | Signature | Description |
-|--------|-----------|-------------|
-| `WithLabel` | `(l string) *multilineText` | Sets the prompt label shown to the user |
-| `WithPlaceholder` | `(p string) *multilineText` | Sets placeholder text shown when input is empty |
-| `WithDefaultValue` | `(v string) *multilineText` | Sets default value used when user submits empty input |
-| `WithValidator` | `(fn func(string) (string, bool)) *multilineText` | Sets validation function called on submit |
-| `WithPrefix` | `(p string) *multilineText` | Overrides the default prompt prefix symbol |
-| `WithStyles` | `(s *StyleMap) *multilineText` | Overrides the StyleMap for this prompt |
-| `Render` | `() (string, error)` | Displays the prompt and blocks until submission |
+| Method             | Signature                                         | Description                                           |
+| ------------------ | ------------------------------------------------- | ----------------------------------------------------- |
+| `WithLabel`        | `(l string) *multilineText`                       | Sets the prompt label shown to the user               |
+| `WithPlaceholder`  | `(p string) *multilineText`                       | Sets placeholder text shown when input is empty       |
+| `WithDefaultValue` | `(v string) *multilineText`                       | Sets default value used when user submits empty input |
+| `WithValidator`    | `(fn func(string) (string, bool)) *multilineText` | Sets validation function called on submit             |
+| `WithPrefix`       | `(p string) *multilineText`                       | Overrides the default prompt prefix symbol            |
+| `WithStyles`       | `(s *StyleMap) *multilineText`                    | Overrides the StyleMap for this prompt                |
+| `Render`           | `() (string, error)`                              | Displays the prompt and blocks until submission       |
 
 **Example**
 
@@ -210,13 +210,13 @@ func Confirm() *confirm
 
 **Builder Methods**
 
-| Method | Signature | Description |
-|--------|-----------|-------------|
-| `WithLabel` | `(l string) *confirm` | Sets the prompt label shown to the user |
-| `WithDefault` | `(v bool) *confirm` | Pre-selects an option; user can press Enter to accept |
-| `WithPrefix` | `(p string) *confirm` | Overrides the default prompt prefix symbol |
-| `WithStyles` | `(s *StyleMap) *confirm` | Overrides the StyleMap for this prompt |
-| `Render` | `() (bool, error)` | Displays the prompt and blocks until Y/N is pressed |
+| Method        | Signature                | Description                                           |
+| ------------- | ------------------------ | ----------------------------------------------------- |
+| `WithLabel`   | `(l string) *confirm`    | Sets the prompt label shown to the user               |
+| `WithDefault` | `(v bool) *confirm`      | Pre-selects an option; user can press Enter to accept |
+| `WithPrefix`  | `(p string) *confirm`    | Overrides the default prompt prefix symbol            |
+| `WithStyles`  | `(s *StyleMap) *confirm` | Overrides the StyleMap for this prompt                |
+| `Render`      | `() (bool, error)`       | Displays the prompt and blocks until Y/N is pressed   |
 
 **Example**
 
@@ -245,18 +245,18 @@ func Select() *singleSelect
 
 **Builder Methods**
 
-| Method | Signature | Description |
-|--------|-----------|-------------|
-| `WithLabel` | `(l string) *singleSelect` | Sets the prompt label shown to the user |
-| `WithChoices` | `(ch []Choice) *singleSelect` | Sets the list of choices available for selection |
-| `WithDefaultChoice` | `(idx int) *singleSelect` | Pre-selects a choice by zero-based index |
-| `WithPageSize` | `(n int) *singleSelect` | Sets the number of choices visible at once |
-| `WithCursorIndicator` | `(ind string) *singleSelect` | Overrides the cursor indicator symbol (default `>`) |
-| `WithSelectionMarker` | `(mrk string) *singleSelect` | Overrides the selection marker symbol (default `*`) |
-| `WithValidator` | `(v func(Choice) (string, bool)) *singleSelect` | Sets validation function called on submit |
-| `WithPrefix` | `(p string) *singleSelect` | Overrides the default prompt prefix symbol |
-| `WithStyles` | `(s *StyleMap) *singleSelect` | Overrides the StyleMap for this prompt |
-| `Render` | `() (Choice, error)` | Displays the prompt and blocks until selection |
+| Method                | Signature                                       | Description                                         |
+| --------------------- | ----------------------------------------------- | --------------------------------------------------- |
+| `WithLabel`           | `(l string) *singleSelect`                      | Sets the prompt label shown to the user             |
+| `WithChoices`         | `(ch []Choice) *singleSelect`                   | Sets the list of choices available for selection    |
+| `WithDefaultChoice`   | `(idx int) *singleSelect`                       | Pre-selects a choice by zero-based index            |
+| `WithPageSize`        | `(n int) *singleSelect`                         | Sets the number of choices visible at once          |
+| `WithCursorIndicator` | `(ind string) *singleSelect`                    | Overrides the cursor indicator symbol (default `>`) |
+| `WithSelectionMarker` | `(mrk string) *singleSelect`                    | Overrides the selection marker symbol (default `*`) |
+| `WithValidator`       | `(v func(Choice) (string, bool)) *singleSelect` | Sets validation function called on submit           |
+| `WithPrefix`          | `(p string) *singleSelect`                      | Overrides the default prompt prefix symbol          |
+| `WithStyles`          | `(s *StyleMap) *singleSelect`                   | Overrides the StyleMap for this prompt              |
+| `Render`              | `() (Choice, error)`                            | Displays the prompt and blocks until selection      |
 
 **Example**
 
@@ -297,17 +297,17 @@ func MultiSelect() *multiSelect
 
 **Builder Methods**
 
-| Method | Signature | Description |
-|--------|-----------|-------------|
-| `WithLabel` | `(l string) *multiSelect` | Sets the prompt label shown to the user |
-| `WithChoices` | `(ch []Choice) *multiSelect` | Sets the list of choices available for selection |
-| `WithPageSize` | `(n int) *multiSelect` | Sets the number of choices visible at once |
-| `WithCursorIndicator` | `(ind string) *multiSelect` | Overrides the cursor indicator symbol (default `>`) |
-| `WithSelectionMarker` | `(mrk string) *multiSelect` | Overrides the selection marker symbol (default `*`) |
-| `WithValidator` | `(v func([]Choice) (string, bool)) *multiSelect` | Sets validation function called on submit |
-| `WithPrefix` | `(p string) *multiSelect` | Overrides the default prompt prefix symbol |
-| `WithStyles` | `(s *StyleMap) *multiSelect` | Overrides the StyleMap for this prompt |
-| `Render` | `() ([]Choice, error)` | Displays the prompt and blocks until confirmation |
+| Method                | Signature                                        | Description                                         |
+| --------------------- | ------------------------------------------------ | --------------------------------------------------- |
+| `WithLabel`           | `(l string) *multiSelect`                        | Sets the prompt label shown to the user             |
+| `WithChoices`         | `(ch []Choice) *multiSelect`                     | Sets the list of choices available for selection    |
+| `WithPageSize`        | `(n int) *multiSelect`                           | Sets the number of choices visible at once          |
+| `WithCursorIndicator` | `(ind string) *multiSelect`                      | Overrides the cursor indicator symbol (default `>`) |
+| `WithSelectionMarker` | `(mrk string) *multiSelect`                      | Overrides the selection marker symbol (default `*`) |
+| `WithValidator`       | `(v func([]Choice) (string, bool)) *multiSelect` | Sets validation function called on submit           |
+| `WithPrefix`          | `(p string) *multiSelect`                        | Overrides the default prompt prefix symbol          |
+| `WithStyles`          | `(s *StyleMap) *multiSelect`                     | Overrides the StyleMap for this prompt              |
+| `Render`              | `() ([]Choice, error)`                           | Displays the prompt and blocks until confirmation   |
 
 **Example**
 
@@ -355,20 +355,20 @@ func Log() *log
 
 **Builder Methods**
 
-| Method | Signature | Description |
-|--------|-----------|-------------|
-| `WithPrefix` | `(p string) *log` | Overrides the default level prefix symbol |
-| `WithStyles` | `(s *StyleMap) *log` | Overrides the StyleMap for this message |
+| Method       | Signature            | Description                               |
+| ------------ | -------------------- | ----------------------------------------- |
+| `WithPrefix` | `(p string) *log`    | Overrides the default level prefix symbol |
+| `WithStyles` | `(s *StyleMap) *log` | Overrides the StyleMap for this message   |
 
 **Level Methods**
 
-| Method | Default Prefix | Color |
-|--------|----------------|-------|
-| `Success(msg string)` | `(✓)` | Green |
-| `Info(msg string)` | `(i)` | Blue |
-| `Warn(msg string)` | `(!)` | Yellow |
-| `Error(msg string)` | `(✗)` | Red |
-| `Debug(msg string)` | `(~)` | Gray |
+| Method                | Default Prefix | Color  |
+| --------------------- | -------------- | ------ |
+| `Success(msg string)` | `(✓)`          | Green  |
+| `Info(msg string)`    | `(i)`          | Blue   |
+| `Warn(msg string)`    | `(!)`          | Yellow |
+| `Error(msg string)`   | `(✗)`          | Red    |
+| `Debug(msg string)`   | `(~)`          | Gray   |
 
 **Example**
 
@@ -416,33 +416,39 @@ func Spinner() *spinner
 
 **Builder Methods**
 
-| Method | Signature | Description |
-|--------|-----------|-------------|
-| `WithLabel` | `(label string) *spinner` | Sets the label displayed beside the spinner |
-| `WithFrames` | `(frames []string) *spinner` | Sets a custom frame pattern for animation |
+| Method         | Signature                    | Description                                       |
+| -------------- | ---------------------------- | ------------------------------------------------- |
+| `WithLabel`    | `(label string) *spinner`    | Sets the label displayed beside the spinner       |
+| `WithFrames`   | `(frames []string) *spinner` | Sets a custom frame pattern for animation         |
 | `WithInterval` | `(d time.Duration) *spinner` | Sets the frame animation interval (default 100ms) |
-| `WithStyles` | `(s *StyleMap) *spinner` | Overrides the StyleMap for this spinner |
+| `WithStyles`   | `(s *StyleMap) *spinner`     | Overrides the StyleMap for this spinner           |
 
 **Control Methods**
 
-| Method | Description |
-|--------|-------------|
-| `Start()` | Begins the spinner animation in a background goroutine |
-| `Stop()` | Halts the spinner and clears the line |
-| `UpdateLabel(label string)` | Changes the label while the animation is running |
+| Method                      | Description                                            |
+| --------------------------- | ------------------------------------------------------ |
+| `Start()`                   | Begins the spinner animation in a background goroutine |
+| `Stop()`                    | Halts the spinner and clears the line                  |
+| `UpdateLabel(label string)` | Changes the label while the animation is running       |
 
 **Frame Presets**
 
-| Variable | Pattern |
-|----------|---------|
-| `SpinnerDefault` | `(⠋)` `(⠙)` `(⠹)` `(⠸)` `(⠼)` `(⠴)` `(⠦)` `(⠧)` `(⠇)` `(⠏)` |
-| `SpinnerDots` | `⣾` `⣽` `⣻` `⢿` `⡿` `⣟` `⣯` `⣷` |
-| `SpinnerDotsMini` | `⠋` `⠙` `⠹` `⠸` `⠼` `⠴` `⠦` `⠧` `⠇` `⠏` |
-| `SpinnerCircles` | `◐` `◓` `◑` `◒` |
-| `SpinnerSquares` | `▖` `▌` `▘` `▀` `▝` `▐` `▗` `▄` |
-| `SpinnerLine` | `-` `\` `|` `/` |
-| `SpinnerPipes` | `╾` `│` `╸` `┤` `├` `└` `┴` `┬` `┐` `┘` |
-| `SpinnerMoons` | `🌑` `🌒` `🌓` `🌔` `🌕` `🌖` `🌗` `🌘` |
+| Variable          | Pattern                                                           |
+| ----------------- | ----------------------------------------------------------------- |
+| `SpinnerDefault`  | `(⠋)` `(⠙)` `(⠹)` `(⠸)` `(⠼)` `(⠴)` `(⠦)` `(⠧)` `(⠇)` `(⠏)`       |
+| `SpinnerDots`     | `⣾` `⣽` `⣻` `⢿` `⡿` `⣟` `⣯` `⣷`                                   |
+| `SpinnerDotsMini` | `⠋` `⠙` `⠹` `⠸` `⠼` `⠴` `⠦` `⠧` `⠇` `⠏`                           |
+| `SpinnerCircles`  | `◐` `◓` `◑` `◒`                                                   |
+| `SpinnerSquares`  | `▖` `▌` `▘` `▀` `▝` `▐` `▗` `▄`                                   |
+| `SpinnerLine`     | `-` `\` `\|` `/`                                                  |
+| `SpinnerPipes`    | `╾` `│` `╸` `┤` `├` `└` `┴` `┬` `┐` `┘`                           |
+| `SpinnerMoons`    | `🌑` `🌒` `🌓` `🌔` `🌕` `🌖` `🌗` `🌘`                           |
+| `SpinnerBounce`   | `⠁` `⠂` `⠄` `⡀` `⢀` `⠠` `⠐` `⠈`                                   |
+| `SpinnerArrows`   | `←` `↖` `↑` `↗` `→` `↘` `↓` `↙`                                   |
+| `SpinnerGrow`     | `▁` `▂` `▃` `▄` `▅` `▆` `▇` `█` `▇` `▆` `▅` `▄` `▃` `▂`           |
+| `SpinnerToggle`   | `⊶` `⊷`                                                           |
+| `SpinnerArc`      | `◜` `◠` `◝` `◞` `◡` `◟`                                           |
+| `SpinnerBall`     | `(●     )` `( ●    )` `(  ●   )` `(   ●  )` `(    ● )` `(     ●)` |
 
 **Example**
 
@@ -477,33 +483,37 @@ func Progress() *progress
 
 **Builder Methods**
 
-| Method | Signature | Description |
-|--------|-----------|-------------|
-| `WithLabel` | `(label string) *progress` | Sets the label displayed beside the progress bar |
-| `WithTotal` | `(total int) *progress` | Sets the total number of steps (default 100) |
-| `WithWidth` | `(width int) *progress` | Sets the bar width in characters (default 40) |
-| `WithPattern` | `(p ProgressPattern) *progress` | Sets bar characters using a ProgressPattern |
-| `WithPrefix` | `(prefix string) *progress` | Overrides the default prefix before the label |
-| `WithStyles` | `(s *StyleMap) *progress` | Overrides the StyleMap for this progress bar |
+| Method        | Signature                       | Description                                      |
+| ------------- | ------------------------------- | ------------------------------------------------ |
+| `WithLabel`   | `(label string) *progress`      | Sets the label displayed beside the progress bar |
+| `WithTotal`   | `(total int) *progress`         | Sets the total number of steps (default 100)     |
+| `WithWidth`   | `(width int) *progress`         | Sets the bar width in characters (default 40)    |
+| `WithPattern` | `(p ProgressPattern) *progress` | Sets bar characters using a ProgressPattern      |
+| `WithPrefix`  | `(prefix string) *progress`     | Overrides the default prefix before the label    |
+| `WithStyles`  | `(s *StyleMap) *progress`       | Overrides the StyleMap for this progress bar     |
 
 **Control Methods**
 
-| Method | Description |
-|--------|-------------|
-| `Start()` | Begins the progress bar render loop |
-| `Increment()` | Advances progress by one step; auto-cleans on completion |
-| `Set(n int)` | Sets progress to a specific value; auto-cleans on completion |
-| `UpdateLabel(label string)` | Changes the label while the bar is active |
+| Method                      | Description                                                  |
+| --------------------------- | ------------------------------------------------------------ |
+| `Start()`                   | Begins the progress bar render loop                          |
+| `Increment()`               | Advances progress by one step; auto-cleans on completion     |
+| `Set(n int)`                | Sets progress to a specific value; auto-cleans on completion |
+| `UpdateLabel(label string)` | Changes the label while the bar is active                    |
 
 **Pattern Presets**
 
-| Variable | Done | Pending | Pad |
-|----------|------|---------|-----|
-| `ProgressDefault` | `╍` | `╌` | `[` `]` |
-| `ProgressBlock` | `█` | `░` | ` ` ` ` |
-| `ProgressPlus` | `+` | ` ` | `(` `)` |
-| `ProgressHashes` | `#` | ` ` | `[` `]` |
-| `ProgressDots` | `▪` | `▫` | ` ` ` ` |
+| Variable          | Done | Pending | Pad     |
+| ----------------- | ---- | ------- | ------- |
+| `ProgressDefault` | `╍`  | `╌`     | `[` `]` |
+| `ProgressBlock`   | `█`  | `░`     | ` ` ` ` |
+| `ProgressPlus`    | `+`  | ` `     | `(` `)` |
+| `ProgressHashes`  | `#`  | ` `     | `[` `]` |
+| `ProgressDots`    | `▪`  | `▫`     | ` ` ` ` |
+| `ProgressArrow`   | `━`  | `─`     | ` ` ` ` |
+| `ProgressPipe`    | `┃`  | `│`     | `╟` `╢` |
+| `ProgressShade`   | `▓`  | `░`     | `│` `│` |
+| `ProgressThin`    | `―`  | `⋯`     | ` ` ` ` |
 
 **Example**
 
@@ -536,30 +546,30 @@ asky.Log().Success("All files uploaded")
 
 These validators work with `Text`, `Secret`, and `MultilineText` prompts. All return `func(string) (string, bool)`.
 
-| Validator | Description |
-|-----------|-------------|
-| `ValidateTextRequired()` | Fails if input is empty or whitespace only |
-| `ValidateTextMinLength(n)` | Fails if input is shorter than n characters |
-| `ValidateTextMaxLength(n)` | Fails if input is longer than n characters |
-| `ValidateTextMinMaxLength(min, max)` | Fails if input length is outside [min, max] |
-| `ValidateTextEmail()` | Fails if input is not a valid email address (RFC 5322) |
-| `ValidateTextURL()` | Fails if input is not a valid URL with scheme and host |
-| `ValidateTextASCIINumeric()` | Fails if input contains non-digit characters (0-9 only) |
-| `ValidateTextASCIIAlphanumeric()` | Fails if input contains non-alphanumeric characters (a-z, A-Z, 0-9) |
-| `ValidateTextUnicodeNumeric()` | Fails if input contains non-digit characters (all Unicode digits) |
-| `ValidateTextUnicodeAlphanumeric()` | Fails if input contains non-alphanumeric characters (all Unicode) |
-| `ValidateTextRegex(pattern, msg)` | Fails if input does not match the regex pattern |
-| `ValidateTextMin(n)` | Fails if input (as number) is less than n |
-| `ValidateTextMax(n)` | Fails if input (as number) is greater than n |
-| `ValidateTextMinMax(min, max)` | Fails if input (as number) is outside [min, max] |
-| `ValidateTextIPAddr()` | Fails if input is not a valid IPv4 or IPv6 address |
-| `ValidateTextPortNumber()` | Fails if input is not a valid port (1-65535) |
-| `ValidateTextNoSpaces()` | Fails if input contains space characters |
-| `ValidateTextNoWhitespace()` | Fails if input contains any whitespace |
-| `ValidateTextStartsWith(prefix)` | Fails if input does not start with prefix |
-| `ValidateTextEndsWith(suffix)` | Fails if input does not end with suffix |
-| `ValidateTextOneOf(options...)` | Fails if input is not one of the allowed values |
-| `ValidateTextMatches(other *string)` | Fails if input does not match the referenced string |
+| Validator                            | Description                                                         |
+| ------------------------------------ | ------------------------------------------------------------------- |
+| `ValidateTextRequired()`             | Fails if input is empty or whitespace only                          |
+| `ValidateTextMinLength(n)`           | Fails if input is shorter than n characters                         |
+| `ValidateTextMaxLength(n)`           | Fails if input is longer than n characters                          |
+| `ValidateTextMinMaxLength(min, max)` | Fails if input length is outside [min, max]                         |
+| `ValidateTextEmail()`                | Fails if input is not a valid email address (RFC 5322)              |
+| `ValidateTextURL()`                  | Fails if input is not a valid URL with scheme and host              |
+| `ValidateTextASCIINumeric()`         | Fails if input contains non-digit characters (0-9 only)             |
+| `ValidateTextASCIIAlphanumeric()`    | Fails if input contains non-alphanumeric characters (a-z, A-Z, 0-9) |
+| `ValidateTextUnicodeNumeric()`       | Fails if input contains non-digit characters (all Unicode digits)   |
+| `ValidateTextUnicodeAlphanumeric()`  | Fails if input contains non-alphanumeric characters (all Unicode)   |
+| `ValidateTextRegex(pattern, msg)`    | Fails if input does not match the regex pattern                     |
+| `ValidateTextMin(n)`                 | Fails if input (as number) is less than n                           |
+| `ValidateTextMax(n)`                 | Fails if input (as number) is greater than n                        |
+| `ValidateTextMinMax(min, max)`       | Fails if input (as number) is outside [min, max]                    |
+| `ValidateTextIPAddr()`               | Fails if input is not a valid IPv4 or IPv6 address                  |
+| `ValidateTextPortNumber()`           | Fails if input is not a valid port (1-65535)                        |
+| `ValidateTextNoSpaces()`             | Fails if input contains space characters                            |
+| `ValidateTextNoWhitespace()`         | Fails if input contains any whitespace                              |
+| `ValidateTextStartsWith(prefix)`     | Fails if input does not start with prefix                           |
+| `ValidateTextEndsWith(suffix)`       | Fails if input does not end with suffix                             |
+| `ValidateTextOneOf(options...)`      | Fails if input is not one of the allowed values                     |
+| `ValidateTextMatches(other *string)` | Fails if input does not match the referenced string                 |
 
 **Chaining Validators**
 
@@ -581,25 +591,25 @@ asky.Text().
 
 Additional validators specific to `MultilineText`:
 
-| Validator | Description |
-|-----------|-------------|
-| `ValidateMultilineTextMinLines(n)` | Fails if input has fewer than n lines |
-| `ValidateMultilineTextMaxLines(n)` | Fails if input has more than n lines |
+| Validator                                    | Description                               |
+| -------------------------------------------- | ----------------------------------------- |
+| `ValidateMultilineTextMinLines(n)`           | Fails if input has fewer than n lines     |
+| `ValidateMultilineTextMaxLines(n)`           | Fails if input has more than n lines      |
 | `ValidateMultilineTextMinMaxLines(min, max)` | Fails if line count is outside [min, max] |
 
 ### Select Validators
 
-| Validator | Description |
-|-----------|-------------|
+| Validator                  | Description                      |
+| -------------------------- | -------------------------------- |
 | `ValidateSelectRequired()` | Fails if no choice has been made |
 
 ### MultiSelect Validators
 
-| Validator | Description |
-|-----------|-------------|
-| `ValidateMultiSelectRequired()` | Fails if no choices have been selected |
-| `ValidateMultiSelectMin(n)` | Fails if fewer than n choices are selected |
-| `ValidateMultiSelectMax(n)` | Fails if more than n choices are selected |
+| Validator                             | Description                                    |
+| ------------------------------------- | ---------------------------------------------- |
+| `ValidateMultiSelectRequired()`       | Fails if no choices have been selected         |
+| `ValidateMultiSelectMin(n)`           | Fails if fewer than n choices are selected     |
+| `ValidateMultiSelectMax(n)`           | Fails if more than n choices are selected      |
 | `ValidateMultiSelectMinMax(min, max)` | Fails if selection count is outside [min, max] |
 
 **Chaining MultiSelect Validators**
@@ -706,26 +716,26 @@ asky.Configure(asky.Config{
 })
 ```
 
-| Field | Type | Description |
-|-------|------|-------------|
-| `NoColor` | `bool` | Disables all color output. Note: `fatih/color` also respects the `NO_COLOR` environment variable. |
-| `Accessible` | `bool` | Enables accessible mode for screen readers and non-interactive environments. |
-| `Styles` | `*StyleMap` | Sets the default StyleMap for all components. |
+| Field        | Type        | Description                                                                                       |
+| ------------ | ----------- | ------------------------------------------------------------------------------------------------- |
+| `NoColor`    | `bool`      | Disables all color output. Note: `fatih/color` also respects the `NO_COLOR` environment variable. |
+| `Accessible` | `bool`      | Enables accessible mode for screen readers and non-interactive environments.                      |
+| `Styles`     | `*StyleMap` | Sets the default StyleMap for all components.                                                     |
 
 ## Accessibility
 
 When accessible mode is enabled, asky adapts all prompts for screen readers, CI pipelines, and non-interactive terminals:
 
-| Component | Standard Mode | Accessible Mode |
-|-----------|--------------|-----------------|
-| **Text** | Live cursor, inline editing | Line-by-line input via bufio |
-| **Secret** | Masked with `*` or silent | `term.ReadPassword` with post-echo |
-| **MultilineText** | Multi-line editor with Ctrl+D | Lines until blank line submitted |
-| **Confirm** | Single keypress (Y/N) | Type "y"/"n" and press Enter |
-| **Select** | Arrow keys, search | Numbered list, type index |
-| **MultiSelect** | Space toggle, search | Numbered list, comma-separated input |
-| **Spinner** | Animated frames | Static line per label update |
-| **Progress** | Animated bar | Milestone lines at 10% intervals |
+| Component         | Standard Mode                 | Accessible Mode                      |
+| ----------------- | ----------------------------- | ------------------------------------ |
+| **Text**          | Live cursor, inline editing   | Line-by-line input via bufio         |
+| **Secret**        | Masked with `*` or silent     | `term.ReadPassword` with post-echo   |
+| **MultilineText** | Multi-line editor with Ctrl+D | Lines until blank line submitted     |
+| **Confirm**       | Single keypress (Y/N)         | Type "y"/"n" and press Enter         |
+| **Select**        | Arrow keys, search            | Numbered list, type index            |
+| **MultiSelect**   | Space toggle, search          | Numbered list, comma-separated input |
+| **Spinner**       | Animated frames               | Static line per label update         |
+| **Progress**      | Animated bar                  | Milestone lines at 10% intervals     |
 
 Enable accessible mode globally:
 
@@ -737,12 +747,12 @@ asky.Configure(asky.Config{
 
 ## Errors
 
-| Error | Description |
-|-------|-------------|
-| `ErrInterrupted` | User pressed Ctrl+C to cancel the prompt |
-| `ErrTerminalTooSmall` | Terminal dimensions are insufficient to render the component |
-| `ErrNoSelectionChoices` | Selection prompt was given an empty choices list |
-| `ErrInvalidSelectionBounds` | MultiSelect min count exceeds max count |
+| Error                       | Description                                                  |
+| --------------------------- | ------------------------------------------------------------ |
+| `ErrInterrupted`            | User pressed Ctrl+C to cancel the prompt                     |
+| `ErrTerminalTooSmall`       | Terminal dimensions are insufficient to render the component |
+| `ErrNoSelectionChoices`     | Selection prompt was given an empty choices list             |
+| `ErrInvalidSelectionBounds` | MultiSelect min count exceeds max count                      |
 
 ## Acknowledgements
 
