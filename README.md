@@ -1,6 +1,4 @@
-# asky
-
-<!-- Banner placeholder -->
+![banner](assets/banner.svg)
 
 [![Go Report Card](https://goreportcard.com/badge/github.com/patppuccin/asky)](https://goreportcard.com/report/github.com/patppuccin/asky)
 [![Go Reference](https://pkg.go.dev/badge/github.com/patppuccin/asky.svg)](https://pkg.go.dev/github.com/patppuccin/asky)
