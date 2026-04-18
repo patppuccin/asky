@@ -16,6 +16,7 @@ type multiSelect struct {
 	prefix          string
 	label           string
 	choices         []Choice
+	preSelected     []string
 	cursorIndicator string
 	selectionMarker string
 	pageSize        int
@@ -62,6 +63,12 @@ func (s *multiSelect) WithChoices(ch []Choice) *multiSelect {
 	return s
 }
 
+// WithDefaultChoices sets the list of choices to be selected by default.
+func (m *multiSelect) WithSelectedChoices(values []string) *multiSelect {
+	m.preSelected = values
+	return m
+}
+
 // WithPageSize sets the number of choices visible at once.
 func (s *multiSelect) WithPageSize(n int) *multiSelect {
 	s.pageSize = n
@@ -97,6 +104,18 @@ func (s *multiSelect) Render() ([]Choice, error) {
 	if len(s.choices) == 0 {
 		return nil, ErrNoSelectionChoices
 	}
+
+	// Pre-populate selected choices from WithSelectedChoices
+	preSelectedSet := make(map[string]bool)
+	for _, v := range s.preSelected {
+		preSelectedSet[v] = true
+	}
+	for _, c := range s.choices {
+		if preSelectedSet[c.Value] {
+			s.selectedChoices = append(s.selectedChoices, c)
+		}
+	}
+
 	if s.cfg.Accessible {
 		return s.renderAccessible()
 	}
@@ -140,7 +159,14 @@ func (s *multiSelect) renderAccessible() ([]Choice, error) {
 	for i, c := range s.choices {
 		num := safeStyle(s.cfg.Styles.SelectionSearchHint).Sprintf("%*d. ", width, i+1)
 		label := safeStyle(s.cfg.Styles.SelectionItemNormalLabel).Sprint(c.Label)
-		stdOutput.Write([]byte("  " + num + label + "\n"))
+		marker := ""
+		for _, sel := range s.selectedChoices {
+			if sel.Value == c.Value {
+				marker = safeStyle(s.cfg.Styles.SelectionItemSelectedMarker).Sprint(" *")
+				break
+			}
+		}
+		stdOutput.Write([]byte("  " + num + label + marker + "\n"))
 	}
 
 	promptStr := safeStyle(s.cfg.Styles.SelectionPrefix).Sprint(prefix) + " " +
@@ -181,6 +207,15 @@ func (s *multiSelect) renderAccessible() ([]Choice, error) {
 		}
 
 		if line == "" {
+			if len(s.selectedChoices) > 0 {
+				if s.validator != nil {
+					if msg, ok := s.validator(s.selectedChoices); !ok {
+						stdOutput.Write([]byte(safeStyle(s.cfg.Styles.SelectionValidationFail).Sprint(msg) + "\n"))
+						continue
+					}
+				}
+				return s.selectedChoices, nil
+			}
 			stdOutput.Write([]byte(safeStyle(s.cfg.Styles.SelectionValidationFail).Sprint("please enter at least one number") + "\n"))
 			continue
 		}

@@ -13,16 +13,16 @@ import (
 // singleSelect renders an interactive single-selection prompt.
 // Construct one with [Select].
 type singleSelect struct {
-	cfg              Config
-	prefix           string
-	label            string
-	choices          []Choice
-	defaultChoiceIdx *int
-	cursorIndicator  string
-	selectionMarker  string
-	pageSize         int
-	selectedChoice   Choice
-	validator        func(Choice) (string, bool)
+	cfg             Config
+	prefix          string
+	label           string
+	choices         []Choice
+	preSelected     *string
+	cursorIndicator string
+	selectionMarker string
+	pageSize        int
+	selectedChoice  Choice
+	validator       func(Choice) (string, bool)
 }
 
 // Select returns a builder for an interactive single-selection prompt.
@@ -64,9 +64,9 @@ func (s *singleSelect) WithChoices(ch []Choice) *singleSelect {
 	return s
 }
 
-// WithDefaultChoice pre-selects a choice by using a zero-based index.
-func (s *singleSelect) WithDefaultChoice(idx int) *singleSelect {
-	s.defaultChoiceIdx = &idx
+// WithSelectedChoice pre-selects a choice by its value.
+func (s *singleSelect) WithSelectedChoice(value string) *singleSelect {
+	s.preSelected = &value
 	return s
 }
 
@@ -131,10 +131,12 @@ func (s *singleSelect) renderAccessible() (Choice, error) {
 
 	// Build the prompt
 	hint := ""
-	if s.defaultChoiceIdx != nil {
-		idx := *s.defaultChoiceIdx
-		if idx >= 0 && idx < len(s.choices) {
-			hint = fmt.Sprintf(" (default %d) ", idx+1)
+	if s.preSelected != nil {
+		for i, c := range s.choices {
+			if c.Value == *s.preSelected {
+				hint = fmt.Sprintf(" (default %d) ", i+1)
+				break
+			}
 		}
 	}
 	promptStr := safeStyle(s.cfg.Styles.SelectionPrefix).Sprint(prefix) + " " +
@@ -176,17 +178,17 @@ func (s *singleSelect) renderAccessible() (Choice, error) {
 
 		// Empty input uses default if set
 		if line == "" {
-			if s.defaultChoiceIdx != nil {
-				idx := *s.defaultChoiceIdx
-				if idx >= 0 && idx < len(s.choices) {
-					chosen := s.choices[idx]
-					if s.validator != nil {
-						if msg, ok := s.validator(chosen); !ok {
-							stdOutput.Write([]byte(safeStyle(s.cfg.Styles.SelectionValidationFail).Sprint(msg) + "\n"))
-							continue
+			if s.preSelected != nil {
+				for _, c := range s.choices {
+					if c.Value == *s.preSelected {
+						if s.validator != nil {
+							if msg, ok := s.validator(c); !ok {
+								stdOutput.Write([]byte(safeStyle(s.cfg.Styles.SelectionValidationFail).Sprint(msg) + "\n"))
+								continue
+							}
 						}
+						return c, nil
 					}
-					return chosen, nil
 				}
 			}
 			stdOutput.Write([]byte(safeStyle(s.cfg.Styles.SelectionValidationFail).Sprint("please enter a number") + "\n"))
@@ -339,11 +341,13 @@ func (s *singleSelect) renderInteractive() (Choice, error) {
 		prevHeight = newHeight - 1
 	}
 
-	// Apply default selection
-	if s.defaultChoiceIdx != nil {
-		idx := *s.defaultChoiceIdx
-		if idx >= 0 && idx < len(s.choices) {
-			s.selectedChoice = s.choices[idx]
+	// Apply default selection by value
+	if s.preSelected != nil {
+		for _, c := range s.choices {
+			if c.Value == *s.preSelected {
+				s.selectedChoice = c
+				break
+			}
 		}
 	}
 
