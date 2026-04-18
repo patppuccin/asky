@@ -21,6 +21,7 @@ conventional_commits = true
 filter_unconventional = true
 split_commits = false
 commit_parsers = [
+    { message = "^feat!|^fix!|^refactor!|^perf!", group = "Breaking Changes" },
     { message = "^feat", group = "Features" },
     { message = "^fix", group = "Changes & Fixes" },
     { message = "^refactor", group = "Changes & Fixes" },
